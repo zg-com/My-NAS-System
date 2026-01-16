@@ -19,8 +19,8 @@
                     //HTML模板
                     const cardHtml = `
                         <div class="photo-card">
-                            <a href="${API_BASE}/file/${file.id}" target="_blank">
-                                <img src="${API_BASE}/file/${file.id}" alt="${file.filename}">
+                            <a href="${API_BASE}/file/${file.id}?userId=${CURRENT_USER_ID}" target="_blank">
+                                <img src="${API_BASE}/file/${file.id}?userId=${CURRENT_USER_ID}" alt="${file.filename}">
                             </a>
                             <div class="photo-info">
                                 <span>${file.filename}</span>

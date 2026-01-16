@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>NAS 图片加载竞速测试</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f5f5f5; }
+        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        
+        .race-track { display: flex; gap: 20px; }
+        .lane { flex: 1; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
+        .lane h3 { margin-top: 0; color: #333; }
+        
+        .img-box { 
+            height: 300px; 
+            background: #eee; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            margin: 10px 0; 
+            overflow: hidden; 
+            border: 2px solid transparent;
+        }
+        .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        /* 状态颜色 */
+        .status { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
+        .loading { color: #f39c12; border-color: #f39c12; }
+        .finished { color: #27ae60; border-color: #27ae60; }
+        
+        .metrics { font-size: 0.9em; color: #666; text-align: left; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <label>文件ID:</label>
+        <input type="number" id="fileIdInput" placeholder="输入文件ID (如: 5)">
+        <label>用户ID:</label>
+        <input type="number" id="userIdInput" value="1" placeholder="用户ID">
+        <button onclick="startRace()">🏁 开始竞速</button>
+        <span style="color:red; font-size:12px; margin-left:10px;">*请先在 F12 Network 中开启 'Fast 3G' 并勾选 'Disable Cache'</span>
+    </div>
+
+    <div class="race-track">
+        <div class="lane">
+            <h3>Level 1: 缩略图 (400px)</h3>
+            <div id="box-thumb" class="img-box">等待开始...</div>
+            <div id="result-thumb" class="metrics"></div>
+        </div>
+
+        <div class="lane">
+            <h3>Level 2: 预览图 (1920px)</h3>
+            <div id="box-preview" class="img-box">等待开始...</div>
+            <div id="result-preview" class="metrics"></div>
+        </div>
+
+        <div class="lane">
+            <h3>Level 3: 原图 (Original)</h3>
+            <div id="box-original" class="img-box">等待开始...</div>
+            <div id="result-original" class="metrics"></div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ 请修改为你的虚拟机 IP
+        const API_BASE = 'http://192.168.177.133:8080'; 
+        const CURRENT_USER_ID = 1;
+        function startRace() {
+            const fileId = document.getElementById('fileIdInput').value;
+            const userId = document.getElementById('userIdInput').value;
+
+            if (!fileId) { alert("请输入文件ID"); return; }
+
+            // 清空上一轮
+            resetLane('thumb');
+            resetLane('preview');
+            resetLane('original');
+
+            // 加上时间戳 ?t=... 是为了强制欺骗浏览器，让它绝对不要用缓存，必须去服务器重新下
+            const timestamp = new Date().getTime();
+            
+            // 构造三个 URL
+            const urlThumb = `${API_BASE}/file/img/thumbnail/${fileId}?userId=${userId}&t=${timestamp}`;
+            const urlPreview = `${API_BASE}/file/img/preview/${fileId}?userId=${userId}&t=${timestamp}`;
+            const urlOriginal = `${API_BASE}/file/${fileId}?userId=${userId}&t=${timestamp}`; // 原图接口可能没改名，按你实际的来
+
+            // 发令枪响！
+            loadImage('thumb', urlThumb);
+            loadImage('preview', urlPreview);
+            loadImage('original', urlOriginal);
+        }
+
+        function loadImage(type, url) {
+            const box = document.getElementById(`box-${type}`);
+            const resultDiv = document.getElementById(`result-${type}`);
+            
+            box.innerHTML = '<span style="color:orange">加载中...</span>';
+            box.classList.add('loading');
+            
+            const startTime = performance.now(); // 记录开始时间 (精确到微秒)
+
+            const img = new Image();
+            
+            img.onload = function() {
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2); // 算出耗时
+                
+                box.innerHTML = '';
+                box.appendChild(img);
+                box.classList.remove('loading');
+                box.classList.add('finished');
+
+                // 显示成绩
+                resultDiv.innerHTML = `
+                    <p>⏱️ 耗时: <b>${duration} ms</b></p>
+                    <p>🏁 状态: 加载完成</p>
+                `;
+            };
+
+            img.onerror = function() {
+                box.innerHTML = '<span style="color:red">加载失败</span>';
+                resultDiv.innerHTML = '<p>❌ 请求错误 (可能ID不存在)</p>';
+            };
+
+            // 开始下载
+            img.src = url;
+        }
+
+        function resetLane(type) {
+            const box = document.getElementById(`box-${type}`);
+            const resultDiv = document.getElementById(`result-${type}`);
+            box.innerHTML = '等待开始...';
+            box.className = 'img-box';
+            resultDiv.innerHTML = '';
+        }
+    </script>
+</body>
+</html>
