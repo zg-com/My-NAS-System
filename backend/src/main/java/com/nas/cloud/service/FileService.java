@@ -3,6 +3,7 @@ package com.nas.cloud.service;
 
 import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.UserFileRepository;
+import com.nas.cloud.util.ImageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
@@ -26,13 +27,10 @@ public class FileService {
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
     public UserFile upload(MultipartFile file,Long userId) throws IOException {//MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
-        //业务逻辑开始
+        /*   //业务逻辑开始
         //获取文件名,原始文件名,就是上传的那个文件的名字
         String originalFilename = file.getOriginalFilename();
-        //获取文件类型
-        String type = file.getContentType();
-        //获取文件大小
-        Long size = file.getSize();
+
         //生成唯一文件名 给电脑看的,当作id不要重复
         String uuid = UUID.randomUUID().toString();
         //提取后缀名,读取原文件名最后一个.后的内容
@@ -48,9 +46,7 @@ public class FileService {
         File targetFile = new File(storageDir,storageFileName);
         //写入这个目标文件对象到硬盘里面
         file.transferTo(targetFile);
-        //准备数据库部分的记录
-        //创建数据库的实体类的对象
-        UserFile userfile = new UserFile();
+
         //名字
         userfile.setFilename(originalFilename);
         //类型
@@ -59,6 +55,72 @@ public class FileService {
         userfile.setSize(size);
         //路径
         userfile.setFilePath(targetFile.getAbsolutePath());
+        //上传时间
+        userfile.setUploadTime(new Date());
+        //上传用户
+        userfile.setUserId(userId);*/
+
+
+        /*---------------------缩略图部分！--------------------------------*/
+        //获取基础根目录
+        String basePath = uploadPath;
+            //先判断一下基础根目录后面有没有分隔符：File.separator（windows是\,Linux和MaxOs是/）这样能自动适配
+        if(!basePath.endsWith(File.separator)){
+            basePath += File.separator;//没有的话就自己加上
+        }
+        //定义三个子目录
+        File originalDir = new File(basePath+"original");
+        File thumbDir = new File(basePath + "thumbnail");
+        File previewDir = new File(basePath + "preview");
+        //自动创建文件夹
+        if(!originalDir.exists()) originalDir.mkdirs();
+        if(!thumbDir.exists()) thumbDir.mkdirs();
+        if(!previewDir.exists()) previewDir.mkdirs();
+        //生成文件名,使用UUID 防止重名
+        String originalFilename = file.getOriginalFilename();
+        String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String newFileName = UUID.randomUUID().toString() + suffix;
+        //设定三个文件的目标路径
+        File physicalFile = new File(originalDir,newFileName);//原图
+        File thumbFile = new File(thumbDir,"thumbmin-" + newFileName);//小缩略图
+        File previewFile = new File(previewDir,"thumbpre-" + newFileName);//大缩略图
+        //保存原图
+        file.transferTo(physicalFile);
+
+        //准备数据库部分的记录
+        //创建数据库的实体类的对象
+        UserFile userfile = new UserFile();
+        //判断一下文件是不是图片
+        if(file.getContentType() != null && file.getContentType().startsWith("image/")){
+            userfile.setIsImage(true);
+
+            //生成缩略图
+            try{
+                //小缩略图
+                ImageUtils.generateThumbnail(physicalFile,thumbFile,400,400);
+                userfile.setThumbnailMinPath(thumbFile.getAbsolutePath());
+                //预览大图
+                ImageUtils.generateThumbnail(physicalFile,previewFile,1920,1920);
+                userfile.setThumbnailPrePath(previewFile.getAbsolutePath());
+
+            }catch(Exception e){
+                System.out.println("缩略图生成失败: " + e.getMessage());
+            }
+        }else{
+            userfile.setIsImage(false);
+        }
+        //获取文件类型
+        String type = file.getContentType();
+        //获取文件大小
+        Long size = file.getSize();
+        //写入数据库
+        userfile.setFilename(originalFilename);
+        //类型
+        userfile.setType(type);
+        //大小
+        userfile.setSize(size);
+        //路径
+        userfile.setFilePath(physicalFile.getAbsolutePath());
         //上传时间
         userfile.setUploadTime(new Date());
         //上传用户
@@ -96,16 +158,36 @@ public class FileService {
             throw new RuntimeException("无权删除文件");
         }
         //先删除物理文件
-        File physicalFile = new File(file.getFilePath()); //找到物理文件
+        deletePhysicalFile(file.getFilePath(), true); //找到物理文件
+        //缩略图
+        deletePhysicalFile(file.getThumbnailMinPath(), false);
+        //预览图
+        deletePhysicalFile(file.getThumbnailPrePath(), false);
 
-        boolean finishDelete = physicalFile.delete();//注意要看一下是不是真的删除成功了，有的时候文件被占用就没有办法进行删除了
-        if(physicalFile.exists()){
-
-            if(!finishDelete){
-                throw new RuntimeException("警告，硬盘文件删除失败，路径：" + file.getFilePath());
-            }
-        }
         //删除之后再删除数据库文件
         userFileRepository.delete(file);
+    }
+
+    //辅助方法：安全删除硬盘文件
+     //@param path文件路径 @param isCritical是否为关键文件，原图是关键的，必须删！缩略图删不掉可以忍
+    private void deletePhysicalFile(String path,boolean isCritical){
+        //路径为空直接跳过
+        if(path == null || path.isEmpty()){
+            return ;
+        }
+
+        File file = new File(path);
+        if(file.exists()){
+            boolean deleted = file.delete();
+            if(!deleted){
+                String msg = "警告：硬盘文件删除失败，路径：" + path;
+                if(isCritical){
+                    throw new RuntimeException(msg);
+                }else{
+                    //如果缩略图删不掉，记录日志就可以了,不要卡用户
+                    System.out.println(msg);
+                }
+            }
+        }
     }
 }

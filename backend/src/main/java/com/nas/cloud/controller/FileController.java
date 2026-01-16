@@ -4,6 +4,7 @@ import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.service.FileService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,9 +41,10 @@ public class FileController {
     @GetMapping("/file/{id}")//注意使用@PathVariable 注解，让此处的id自动等于{id}中的id的值
     //注意虽然咱们使用void没有返回值，但是文件的回应是通过HttpServletResponse response进行返回的
     //注意此处也是IO，也有可能出现错误，注意要丢给IOException
-    public void getFile(@PathVariable Long id , HttpServletResponse response) throws IOException {
+    public void getFile(@PathVariable Long id , HttpServletResponse response , @RequestParam("userId") Long userId) throws IOException {
         //1、从数据库查找这个信息
         UserFile userfile = fileService.getFileById(id);
+        if(!userfile.getUserId().equals(userId)) throw new RuntimeException("无权访问");
         //2、没有这个id就报错，或者已经找到id对应的路径了，但是路径里面没有照片，也要进行报错
         if(userfile == null) {
             response.setStatus(404);
@@ -132,6 +134,55 @@ public class FileController {
         int bytesRead;
         while((bytesRead = in.read(buffer)) != -1){
             out.write(buffer, 0, bytesRead);
+        }
+        in.close();
+        out.close();
+    }
+
+    //获取预览图
+    @GetMapping("/file/img/preview/{id}")
+    public void getPreview(@PathVariable Long id,HttpServletResponse response,@RequestParam("userId") Long userId)throws IOException{
+        UserFile userFile = fileService.getFileById(id);
+        if(!userFile.getUserId().equals(userId)){
+            throw new RuntimeException("无权访问");
+        }
+        File file = new File(userFile.getThumbnailPrePath());
+        if(!file.exists()){
+            file = new File(userFile.getFilePath());
+        }
+
+        //设置强缓存，让浏览器缓存到本地
+        response.setHeader("Cache-Control", "public,max-age=2592000");//2592000是告诉浏览器30天这图不会变，别来问我了，直接读缓存
+        response.setContentType(userFile.getType());
+        writeFileToResponse(file,response);
+    }
+
+    //获取微缩略图
+    @GetMapping("/file/img/thumbnail/{id}")
+    public void getThumbnail(@PathVariable Long id,HttpServletResponse response,@RequestParam("userId") Long userId)throws IOException{
+        UserFile userFile = fileService.getFileById(id);
+        if(!userFile.getUserId().equals(userId)){
+            throw new RuntimeException("无权访问");
+        }
+        File file = new File(userFile.getThumbnailMinPath());
+        if(!file.exists()){
+            file = new File(userFile.getFilePath());
+        }
+
+        //设置强缓存，让浏览器缓存到本地
+        response.setHeader("Cache-Control", "public,max-age=2592000");//2592000是告诉浏览器30天这图不会变，别来问我了，直接读缓存
+        response.setContentType(userFile.getType());
+        writeFileToResponse(file,response);
+    }
+
+    //图片输出到浏览器的方法
+    private void writeFileToResponse(File file,HttpServletResponse response) throws IOException {
+        FileInputStream in = new FileInputStream(file);
+        OutputStream out = response.getOutputStream();
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while((bytesRead = in.read(buffer)) != -1){
+            out.write(buffer,0,bytesRead);
         }
         in.close();
         out.close();

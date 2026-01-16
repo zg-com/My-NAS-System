@@ -23,7 +23,6 @@ public class UserFile {
     private Date uploadTime; //上传时间
     private Long userId;//这张照片属于哪个用户
     private Boolean isImage;//是否是照片（用于快速过滤）
-    private String thumbnailPath;//缩略图的存储路径
     private LocalDateTime shootTime;//拍摄时间（区别于上传时间）
     private Integer width;//图片宽
     private Integer height;//图片高
@@ -37,6 +36,8 @@ public class UserFile {
     private String meteringMode;//测光模式
     private String whiteBalance;//白平衡
     private String software;//拍摄软件/模式
+    private String thumbnailMinPath;//小缩略图路径
+    private String thumbnailPrePath;//全屏预览缩略图路径
 
 
     //id的函数
@@ -95,13 +96,6 @@ public class UserFile {
     }
     public void setIsImage(Boolean isImage){
         this.isImage = isImage;
-    }
-    //thumbnailPath
-    public String getThumbnailPath(){
-        return this.getThumbnailPath();
-    }
-    public void setThumbnailPath(String thumbnailPath){
-        this.thumbnailPath = thumbnailPath;
     }
     //shootTime
     public LocalDateTime getShootTime(){
@@ -194,5 +188,18 @@ public class UserFile {
     public void setSoftware(String software){
         this.software = software;
     }
-
+    //thumbnailMinPath
+    public String getThumbnailMinPath(){
+        return this.thumbnailMinPath;
+    }
+    public void setThumbnailMinPath(String thumbnailMinPath){
+        this.thumbnailMinPath = thumbnailMinPath;
+    }
+    //thumbnailPrePath
+    public String getThumbnailPrePath(){
+        return this.thumbnailPrePath;
+    }
+    public void setThumbnailPrePath(String thumbnailPrePath){
+        this.thumbnailPrePath =thumbnailPrePath;
+    }
 }
