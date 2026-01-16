@@ -1,0 +1,9 @@
+### 测试文件上传
+POST http://localhost:8080/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="test.txt"
+
+这里是文件内容，你可以随便写点字测试。
+--WebAppBoundary--
