@@ -1,6 +1,8 @@
 /*service这个包里放的就是服务层,负责干脏活累活,controller只负责接待*/
 package com.nas.cloud.service;
 
+import com.drew.metadata.exif.ExifIFD0Directory;
+import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.util.ImageUtils;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -26,64 +29,79 @@ public class FileService {
     private String uploadPath;
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
-    public UserFile upload(MultipartFile file,Long userId) throws IOException {//MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
-        /*   //业务逻辑开始
-        //获取文件名,原始文件名,就是上传的那个文件的名字
-        String originalFilename = file.getOriginalFilename();
-
-        //生成唯一文件名 给电脑看的,当作id不要重复
-        String uuid = UUID.randomUUID().toString();
-        //提取后缀名,读取原文件名最后一个.后的内容
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        //拼凑新文件名
-        String storageFileName = uuid + fileExtension;
-        //准备父文件夹
-        File storageDir = new File(uploadPath);
-        if(!storageDir.exists()){//如果这个父文件夹不存在,就创建这个文件夹
-            storageDir.mkdir();
+    public UserFile upload(MultipartFile file, Long userId) throws IOException {//MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
+        //计算文件的MD5指纹
+        String fileMd5 = DigestUtils.md5DigestAsHex(file.getInputStream());
+        /*---------------------逻辑去重--------------------------------------*/
+        UserFile selfFile = userFileRepository.findByUserIdAndMd5(userId,fileMd5);
+        if(selfFile != null){
+            System.out.println("用户已拥有该文件，跳过上传: " + file.getOriginalFilename());
+            return selfFile;
         }
-        //准备目标文件对象
-        File targetFile = new File(storageDir,storageFileName);
-        //写入这个目标文件对象到硬盘里面
-        file.transferTo(targetFile);
+        /*---------------------秒传与查重（物理）--------------------------------------*/
 
-        //名字
-        userfile.setFilename(originalFilename);
-        //类型
-        userfile.setType(type);
-        //大小
-        userfile.setSize(size);
-        //路径
-        userfile.setFilePath(targetFile.getAbsolutePath());
-        //上传时间
-        userfile.setUploadTime(new Date());
-        //上传用户
-        userfile.setUserId(userId);*/
+        //查一下有没有人传过
+        UserFile existingFile = userFileRepository.findFirstByMd5(fileMd5);
+        if (existingFile != null) {//传过了！
+            System.out.println("触发秒传！文件已存在：" + existingFile.getFilename());
 
+            //只创建新的数据库记录，不存物理文件
+            UserFile userFile = new UserFile();
+            userFile.setUserId(userId); // 当前用户
+            userFile.setFilename(file.getOriginalFilename()); // 用当前上传的文件名
+            userFile.setType(existingFile.getType()); // 复用已有类型
+            userFile.setSize(existingFile.getSize()); // 复用已有大小
+            userFile.setUploadTime(new Date());
 
-        /*---------------------缩略图部分！--------------------------------*/
+            // 【关键】复用已有文件的物理路径！
+            userFile.setFilePath(existingFile.getFilePath());
+            userFile.setThumbnailMinPath(existingFile.getThumbnailMinPath());
+            userFile.setThumbnailPrePath(existingFile.getThumbnailPrePath());
+            userFile.setIsImage(existingFile.getIsImage());
+
+            // 复用 Exif 信息 (既然是同一张图，Exif 肯定一样)
+            userFile.setShootTime(existingFile.getShootTime());
+            userFile.setWidth(existingFile.getWidth());
+            userFile.setHeight(existingFile.getHeight());
+            userFile.setCameraModel(existingFile.getCameraModel());
+            userFile.setSoftware(existingFile.getSoftware());
+            userFile.setISO(userFile.getISO());
+            userFile.setShutterSpeed(existingFile.getShutterSpeed());
+            userFile.setFNumber(existingFile.getFNumber());
+            userFile.setFocalLength(existingFile.getFocalLength());
+            userFile.setFlash(existingFile.getFlash());
+            userFile.setExposureBias(existingFile.getExposureBias());
+            userFile.setMeteringMode(existingFile.getMeteringMode());
+            userFile.setWhiteBalance(existingFile.getWhiteBalance());
+            //记下md5
+            userFile.setMD5(fileMd5);
+            return userFileRepository.save(userFile);
+        }
+        // --- 3. 物理上传 (新文件) ---
+        System.out.println("新文件，执行物理上传...");
+        /*---------------------缩略图部分与物理存储部分！--------------------------------*/
         //获取基础根目录
         String basePath = uploadPath;
-            //先判断一下基础根目录后面有没有分隔符：File.separator（windows是\,Linux和MaxOs是/）这样能自动适配
-        if(!basePath.endsWith(File.separator)){
+        //先判断一下基础根目录后面有没有分隔符：File.separator（windows是\,Linux和MaxOs是/）这样能自动适配
+        if (!basePath.endsWith(File.separator)) {
             basePath += File.separator;//没有的话就自己加上
         }
         //定义三个子目录
-        File originalDir = new File(basePath+"original");
+        File originalDir = new File(basePath + "original");
         File thumbDir = new File(basePath + "thumbnail");
         File previewDir = new File(basePath + "preview");
         //自动创建文件夹
-        if(!originalDir.exists()) originalDir.mkdirs();
-        if(!thumbDir.exists()) thumbDir.mkdirs();
-        if(!previewDir.exists()) previewDir.mkdirs();
+        if (!originalDir.exists()) originalDir.mkdirs();
+        if (!thumbDir.exists()) thumbDir.mkdirs();
+        if (!previewDir.exists()) previewDir.mkdirs();
         //生成文件名,使用UUID 防止重名
         String originalFilename = file.getOriginalFilename();
         String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
         String newFileName = UUID.randomUUID().toString() + suffix;
         //设定三个文件的目标路径
-        File physicalFile = new File(originalDir,newFileName);//原图
-        File thumbFile = new File(thumbDir,"thumbmin-" + newFileName);//小缩略图
-        File previewFile = new File(previewDir,"thumbpre-" + newFileName);//大缩略图
+        File physicalFile = new File(originalDir, newFileName);//原图
+        File thumbFile = new File(thumbDir, "thumbmin-" + newFileName);//小缩略图
+        File previewFile = new File(previewDir, "thumbpre-" + newFileName);//大缩略图
         //保存原图
         file.transferTo(physicalFile);
 
@@ -91,22 +109,24 @@ public class FileService {
         //创建数据库的实体类的对象
         UserFile userfile = new UserFile();
         //判断一下文件是不是图片
-        if(file.getContentType() != null && file.getContentType().startsWith("image/")){
+        if (file.getContentType() != null && file.getContentType().startsWith("image/")) {
             userfile.setIsImage(true);
 
             //生成缩略图
-            try{
+            try {
                 //小缩略图
-                ImageUtils.generateThumbnail(physicalFile,thumbFile,400,400);
+                ImageUtils.generateThumbnail(physicalFile, thumbFile, 400, 400);
                 userfile.setThumbnailMinPath(thumbFile.getAbsolutePath());
                 //预览大图
-                ImageUtils.generateThumbnail(physicalFile,previewFile,1920,1920);
+                ImageUtils.generateThumbnail(physicalFile, previewFile, 1920, 1920);
                 userfile.setThumbnailPrePath(previewFile.getAbsolutePath());
+                //提取Exif和宽高
+                ImageUtils.extractExif(physicalFile, userfile);
 
-            }catch(Exception e){
+            } catch (Exception e) {
                 System.out.println("缩略图生成失败: " + e.getMessage());
             }
-        }else{
+        } else {
             userfile.setIsImage(false);
         }
         //获取文件类型

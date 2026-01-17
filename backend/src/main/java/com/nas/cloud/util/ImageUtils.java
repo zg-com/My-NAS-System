@@ -8,6 +8,8 @@ import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.nas.cloud.entity.UserFile;
 import net.coobird.thumbnailator.Thumbnails;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.time.ZoneId;
@@ -33,6 +35,13 @@ public class ImageUtils {
     //解析图片Exif信息
     public static void extractExif(File file, UserFile userFile) throws ImageProcessingException, IOException {
         try{
+            //获取宽高
+            BufferedImage image = ImageIO.read(file);
+            if(image != null){
+                userFile.setWidth(image.getWidth());
+                userFile.setHeight(image.getHeight());
+            }
+
             Metadata metadata = ImageMetadataReader.readMetadata(file);
 
             //读取基础信息Exif(IFD0):设备型号、软件

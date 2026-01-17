@@ -38,6 +38,7 @@ public class UserFile {
     private String software;//拍摄软件/模式
     private String thumbnailMinPath;//小缩略图路径
     private String thumbnailPrePath;//全屏预览缩略图路径
+    private String md5;//文件指纹(MD5)用于去重和秒传
 
 
     //id的函数
@@ -201,5 +202,12 @@ public class UserFile {
     }
     public void setThumbnailPrePath(String thumbnailPrePath){
         this.thumbnailPrePath =thumbnailPrePath;
+    }
+    //md5
+    public String setMD5(){
+        return this.md5;
+    }
+    public void setMD5(String md5){
+        this.md5 = md5;
     }
 }

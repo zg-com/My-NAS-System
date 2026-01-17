@@ -13,4 +13,8 @@ public interface UserFileRepository extends JpaRepository<UserFile,Long> {
     //现在需要自定义一个 带过滤条件的查询器
     //只要写上 findBy+字段名，这个Spring Data JPA就会自动生成SQL
     List<UserFile> findByUserId(Long userId, Sort sort);
+    //查询某个人是否已经有了某个MD5文件
+    UserFile findByUserIdAndMd5(Long userId,String md5);
+    //根据MD5查找文件
+    UserFile findFirstByMd5(String md5);
 }
