@@ -2,6 +2,7 @@ package com.nas.cloud.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.springframework.cglib.core.Block;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -39,6 +40,9 @@ public class UserFile {
     private String thumbnailMinPath;//小缩略图路径
     private String thumbnailPrePath;//全屏预览缩略图路径
     private String md5;//文件指纹(MD5)用于去重和秒传
+    private Boolean isVideo;//是否为视频
+    private Boolean isRawImg;//是否为RAW格式照片
+    private Boolean isLiveImg;//是否为实况图片
 
 
     //id的函数
@@ -209,5 +213,26 @@ public class UserFile {
     }
     public void setMD5(String md5){
         this.md5 = md5;
+    }
+    //isVideo
+    public Boolean getIsVideo(){
+        return this.isVideo;
+    }
+    public void setIsVideo(Boolean isVideo){
+        this.isVideo = isVideo;
+    }
+    //isRawImg
+    public Boolean getIsRawImg(){
+        return  this.isRawImg;
+    }
+    public void setIsRawImg(Boolean isRawImg){
+        this.isRawImg = isRawImg;
+    }
+    //isLiveImg
+    public Boolean getIsLiveImg(){
+        return this.isLiveImg;
+    }
+    public void setIsLiveImg(Boolean isLiveImg){
+        this.isLiveImg = isLiveImg;
     }
 }

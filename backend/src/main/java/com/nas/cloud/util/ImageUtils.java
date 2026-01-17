@@ -31,6 +31,7 @@ public class ImageUtils {
                 .size(width, height)
                 .outputQuality(0.5f)
                 .toFile(targetFile);
+        System.out.println("压缩成功"+width);
         return targetFile;
     }
 

@@ -6,6 +6,9 @@ import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.util.ImageUtils;
+import com.nas.cloud.util.VideoUtils;
+import jdk.jfr.ContentType;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
@@ -19,6 +22,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static org.springframework.web.servlet.function.RequestPredicates.contentType;
+
 @Service //告诉Spring我是干活的
 public class FileService {
 
@@ -29,9 +34,11 @@ public class FileService {
     private String uploadPath;
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
-    public UserFile upload(MultipartFile file, Long userId) throws IOException {//MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
+    public UserFile upload(@NotNull MultipartFile file, Long userId) throws IOException {
+        //MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
         //计算文件的MD5指纹
         String fileMd5 = DigestUtils.md5DigestAsHex(file.getInputStream());
+        System.out.println("MD5计算完成");
         /*---------------------逻辑去重--------------------------------------*/
         UserFile selfFile = userFileRepository.findByUserIdAndMd5(userId,fileMd5);
         if(selfFile != null){
@@ -42,7 +49,7 @@ public class FileService {
 
         //查一下有没有人传过
         UserFile existingFile = userFileRepository.findFirstByMd5(fileMd5);
-        if (existingFile != null) {//传过了！
+        if (existingFile != null ) {//传过了！
             System.out.println("触发秒传！文件已存在：" + existingFile.getFilename());
 
             //只创建新的数据库记录，不存物理文件
@@ -59,20 +66,23 @@ public class FileService {
             userFile.setThumbnailPrePath(existingFile.getThumbnailPrePath());
             userFile.setIsImage(existingFile.getIsImage());
 
-            // 复用 Exif 信息 (既然是同一张图，Exif 肯定一样)
-            userFile.setShootTime(existingFile.getShootTime());
-            userFile.setWidth(existingFile.getWidth());
-            userFile.setHeight(existingFile.getHeight());
-            userFile.setCameraModel(existingFile.getCameraModel());
-            userFile.setSoftware(existingFile.getSoftware());
-            userFile.setISO(userFile.getISO());
-            userFile.setShutterSpeed(existingFile.getShutterSpeed());
-            userFile.setFNumber(existingFile.getFNumber());
-            userFile.setFocalLength(existingFile.getFocalLength());
-            userFile.setFlash(existingFile.getFlash());
-            userFile.setExposureBias(existingFile.getExposureBias());
-            userFile.setMeteringMode(existingFile.getMeteringMode());
-            userFile.setWhiteBalance(existingFile.getWhiteBalance());
+            if(file.getContentType().startsWith("image/")){
+                // 复用 Exif 信息 (既然是同一张图，Exif 肯定一样)
+                userFile.setShootTime(existingFile.getShootTime());
+                userFile.setWidth(existingFile.getWidth());
+                userFile.setHeight(existingFile.getHeight());
+                userFile.setCameraModel(existingFile.getCameraModel());
+                userFile.setSoftware(existingFile.getSoftware());
+                userFile.setISO(userFile.getISO());
+                userFile.setShutterSpeed(existingFile.getShutterSpeed());
+                userFile.setFNumber(existingFile.getFNumber());
+                userFile.setFocalLength(existingFile.getFocalLength());
+                userFile.setFlash(existingFile.getFlash());
+                userFile.setExposureBias(existingFile.getExposureBias());
+                userFile.setMeteringMode(existingFile.getMeteringMode());
+                userFile.setWhiteBalance(existingFile.getWhiteBalance());
+            }
+
             //记下md5
             userFile.setMD5(fileMd5);
             return userFileRepository.save(userFile);
@@ -108,8 +118,9 @@ public class FileService {
         //准备数据库部分的记录
         //创建数据库的实体类的对象
         UserFile userfile = new UserFile();
+        String contentType = file.getContentType();
         //判断一下文件是不是图片
-        if (file.getContentType() != null && file.getContentType().startsWith("image/")) {
+        if (contentType != null && contentType.startsWith("image/")) {
             userfile.setIsImage(true);
 
             //生成缩略图
@@ -126,7 +137,30 @@ public class FileService {
             } catch (Exception e) {
                 System.out.println("缩略图生成失败: " + e.getMessage());
             }
-        } else {
+        } else if (contentType != null && contentType.startsWith("video/")) {
+                userfile.setIsVideo(true);
+                try{
+                    VideoUtils.generateVideoThumbnail(physicalFile,thumbFile);
+                    userfile.setThumbnailPrePath(thumbFile.getAbsolutePath());
+
+                    VideoUtils.generateVideoThumbnail(physicalFile,previewFile);
+                    userfile.setThumbnailPrePath(previewFile.getAbsolutePath());
+
+                    //解析视频相关参数
+
+                } catch (InterruptedException e) {
+                    System.out.println("视频缩略图生成失败：" + e.getMessage());
+                }
+        }else if(originalFilename.toLowerCase().matches(".*\\.(cr2|nef|arw|dng|cr3|raf|rw2|pef|3fr)$")){
+            try{
+                userfile.setIsRawImg(true);
+                VideoUtils.generateVideoThumbnail(physicalFile,thumbFile);
+                userfile.setThumbnailMinPath(thumbFile.getAbsolutePath());
+            } catch (InterruptedException e) {
+                System.out.println("RAW 预览失败");
+            }
+        }
+        else {
             userfile.setIsImage(false);
         }
         //获取文件类型
