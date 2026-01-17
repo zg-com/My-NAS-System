@@ -204,7 +204,7 @@ public class UserFile {
         this.thumbnailPrePath =thumbnailPrePath;
     }
     //md5
-    public String setMD5(){
+    public String getMD5(){
         return this.md5;
     }
     public void setMD5(String md5){

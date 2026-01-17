@@ -145,6 +145,8 @@ public class FileService {
         userfile.setUploadTime(new Date());
         //上传用户
         userfile.setUserId(userId);
+        //写入文件指纹
+        userfile.setMD5(fileMd5);
 
         //保存该实体类对象到数据库中
         return userFileRepository.save(userfile);
