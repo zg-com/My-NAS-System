@@ -151,8 +151,11 @@ public class FileController {
         if (!userFile.getUserId().equals(userId)) {
             throw new RuntimeException("无权访问");
         }
-        File file = new File(userFile.getThumbnailPrePath());
-        if (!file.exists()) {
+        File file = null;
+        if(userFile.getThumbnailPrePath() != null){
+            file = new File(userFile.getThumbnailPrePath());
+        }
+        if (file == null || !file.exists()) {
             file = new File(userFile.getFilePath());
         }
 
@@ -169,8 +172,11 @@ public class FileController {
         if (!userFile.getUserId().equals(userId)) {
             throw new RuntimeException("无权访问");
         }
-        File file = new File(userFile.getThumbnailMinPath());
-        if (!file.exists()) {
+        File file = null;
+        if(userFile.getThumbnailMinPath() != null){
+            file = new File(userFile.getThumbnailMinPath());
+        }
+        if (file == null || !file.exists()) {
             file = new File(userFile.getFilePath());
         }
 

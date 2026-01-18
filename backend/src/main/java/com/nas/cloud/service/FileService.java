@@ -1,12 +1,14 @@
 /*service这个包里放的就是服务层,负责干脏活累活,controller只负责接待*/
 package com.nas.cloud.service;
 
+import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.util.ImageUtils;
 import com.nas.cloud.util.VideoUtils;
+import jakarta.security.auth.message.callback.PrivateKeyCallback;
 import jdk.jfr.ContentType;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.springframework.web.servlet.function.RequestPredicates.contentType;
 
@@ -111,71 +114,24 @@ public class FileService {
         }
         //定义三个子目录
         File originalDir = new File(basePath + "original");
-        File thumbDir = new File(basePath + "thumbnail");
-        File previewDir = new File(basePath + "preview");
+
         //自动创建文件夹
         if (!originalDir.exists()) originalDir.mkdirs();
-        if (!thumbDir.exists()) thumbDir.mkdirs();
-        if (!previewDir.exists()) previewDir.mkdirs();
+
+
         //生成文件名,使用UUID 防止重名
         String originalFilename = file.getOriginalFilename();
         String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
         String newFileName = UUID.randomUUID().toString() + suffix;
         //设定三个文件的目标路径
         File physicalFile = new File(originalDir, newFileName);//原图
-        File thumbFile = new File(thumbDir, "thumbmin-" + newFileName);//小缩略图
-        File previewFile = new File(previewDir, "thumbpre-" + newFileName);//大缩略图
+
         //保存原图
         file.transferTo(physicalFile);
 
         //准备数据库部分的记录
         //创建数据库的实体类的对象
         UserFile userfile = new UserFile();
-        String contentType = file.getContentType();
-        //判断一下文件是不是图片
-        if (contentType != null && contentType.startsWith("image/")) {
-            userfile.setIsImage(true);
-
-            //生成缩略图
-            try {
-                //小缩略图
-                ImageUtils.generateThumbnail(physicalFile, thumbFile, 400, 400);
-                userfile.setThumbnailMinPath(thumbFile.getAbsolutePath());
-                //预览大图
-                ImageUtils.generateThumbnail(physicalFile, previewFile, 1920, 1920);
-                userfile.setThumbnailPrePath(previewFile.getAbsolutePath());
-                //提取Exif和宽高
-                ImageUtils.extractExif(physicalFile, userfile);
-
-            } catch (Exception e) {
-                System.out.println("缩略图生成失败: " + e.getMessage());
-            }
-        } else if (contentType != null && contentType.startsWith("video/")) {
-                userfile.setIsVideo(true);
-                try{
-                    VideoUtils.generateVideoThumbnail(physicalFile,thumbFile);
-                    userfile.setThumbnailPrePath(thumbFile.getAbsolutePath());
-
-                    VideoUtils.generateVideoThumbnail(physicalFile,previewFile);
-                    userfile.setThumbnailPrePath(previewFile.getAbsolutePath());
-
-                    //解析视频相关参数
-
-                } catch (InterruptedException e) {
-                    System.out.println("视频缩略图生成失败：" + e.getMessage());
-                }
-        }else if(originalFilename.toLowerCase().matches(".*\\.(cr2|nef|arw|dng|cr3|raf|rw2|pef|3fr)$")){
-            try{
-                userfile.setIsRawImg(true);
-                VideoUtils.generateVideoThumbnail(physicalFile,thumbFile);
-                userfile.setThumbnailMinPath(thumbFile.getAbsolutePath());
-            } catch (InterruptedException e) {
-                System.out.println("RAW 预览失败");
-            }
-        }
-        else {
-            userfile.setIsImage(false);
-        }
         //获取文件类型
         String type = file.getContentType();
         //获取文件大小
@@ -194,10 +150,29 @@ public class FileService {
         userfile.setUserId(userId);
         //写入文件指纹
         userfile.setMD5(fileMd5);
+        if(type.startsWith("image/")){
+            userfile.setIsImage(true);
+        }else if(type.startsWith("video/")){
+            userfile.setIsVideo(true);
+        }else if(originalFilename.toLowerCase().matches(".*\\.(cr2|nef|arw|dng|cr3|raf|rw2|pef|3fr)$")){
+            userfile.setIsRawImg(true);
+        }
+        //先保存一个半成品，此时的缩略图路径都是空的
+        UserFile savedFile = userFileRepository.save(userfile);
+        //开启异步任务，去后台生成缩略图，这里瞬间返回，主线程会直接往下走
+        CompletableFuture.runAsync(()->{
+            try{
+                processUserFileAsync(physicalFile,savedFile);
+            }catch(Exception e){
+                e.printStackTrace();
+                System.out.println("后台处理图片失败:" + e.getMessage());
+            }
+        });
 
         //保存该实体类对象到数据库中
-        return userFileRepository.save(userfile);
+        return savedFile;
     }
+
 
     //根据ID获取文件信息
     public UserFile getFileById(Long id){
@@ -264,4 +239,62 @@ public class FileService {
     public UserFile getFileByMd5(String md5){
         return userFileRepository.findFirstByMd5(md5);
     }
+
+    //后台生成缩略图方法
+    private void processUserFileAsync(File physicalFile,UserFile userFile){
+        System.out.println("开始后台处理文件：" + userFile.getFilename());
+        String contentType = userFile.getType();
+        //创建路径
+        File thumbDir = new File(uploadPath + File.separator + "thumbnail");
+        File previewDir = new File(uploadPath + File.separator + "preview");
+        if (!thumbDir.exists()) thumbDir.mkdirs();
+        if (!previewDir.exists()) previewDir.mkdirs();
+
+        //定义缩略图文件名
+        String fileName = physicalFile.getName();
+        File thumbFile = new File(thumbDir,"thumbmin-"+fileName);
+        File previewFile = new File(previewDir,"thumbpre-" + fileName);
+
+        boolean needUpdate = false;//标记是否需要更新数据库
+
+        try{
+            if(contentType != null && contentType.startsWith("image/")){
+                userFile.setIsImage(true);
+                //生成小图
+                ImageUtils.generateThumbnail(physicalFile, thumbFile,400,400);
+                userFile.setThumbnailMinPath(thumbFile.getAbsolutePath());
+                //生成大图
+                ImageUtils.generateThumbnail(physicalFile,previewFile,1920,1920);
+                userFile.setThumbnailPrePath(previewFile.getAbsolutePath());
+                //提取Exif
+                ImageUtils.extractExif(physicalFile,userFile);
+                needUpdate = true;
+            } else if (contentType != null && contentType.startsWith("video/")) {
+                userFile.setIsVideo(true);
+                VideoUtils.generateVideoThumbnail(physicalFile, thumbFile);
+                userFile.setThumbnailMinPath(thumbFile.getAbsolutePath());
+                userFile.setThumbnailPrePath(thumbFile.getAbsolutePath());
+                needUpdate = true;
+            } else if (userFile.getFilename().toLowerCase().matches(".*\\.(cr2|nef|arw|dng|cr3|raf|rw2|pef|3fr)$")) {
+                userFile.setIsRawImg(true);
+                VideoUtils.generateVideoThumbnail(physicalFile, thumbFile);
+                userFile.setThumbnailMinPath(thumbFile.getAbsolutePath());
+                userFile.setThumbnailPrePath(thumbFile.getAbsolutePath());
+            }
+            if(needUpdate){
+                userFileRepository.save(userFile);
+                System.out.println("后台处理完成，数据库已更新:" + userFile.getFilename());
+            }
+
+        } catch (IOException e) {
+            System.out.println("异步处理出错: " + e.getMessage());
+        } catch (ImageProcessingException e) {
+            System.out.println("异步处理出错: " + e.getMessage());
+        } catch (InterruptedException e) {
+            System.out.println("异步处理出错: " + e.getMessage());
+        }
+
+    }
+
+
 }
