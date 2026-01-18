@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAS 模块化上传测试</title>
+    <link rel="stylesheet" href="../css/indexCss.css">
+    <style>
+        /* 加一点简单的提示框样式 */
+        .status-box {
+            padding: 10px;
+            margin: 10px auto;
+            width: 300px;
+            text-align: center;
+            border-radius: 5px;
+            display: none; /* 默认隐藏 */
+        }
+        .loading { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>🚀 NAS 极速上传测试</h1>
+    
+    <div style="text-align: center; margin-bottom: 30px;">
+        <input type="file" id="uploadInput">
+        <button id="uploadBtn" style="padding:8px 15px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+            开始上传
+        </button>
+        <div id="statusBox" class="status-box">准备就绪</div>
+    </div>
+
+    <div id="gallery"></div>
+
+    <script src="../js/spark-md5.min.js"></script>
+
+    <script type="module" src="../js/main.js"></script>
+</body>
+</html>

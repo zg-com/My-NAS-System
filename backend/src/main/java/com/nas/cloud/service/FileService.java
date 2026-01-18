@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
@@ -34,11 +35,18 @@ public class FileService {
     private String uploadPath;
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
-    public UserFile upload(@NotNull MultipartFile file, Long userId) throws IOException {
+    public UserFile upload(@NotNull MultipartFile file, Long userId,String md5FromClient) throws IOException {
         //MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
-        //计算文件的MD5指纹
-        String fileMd5 = DigestUtils.md5DigestAsHex(file.getInputStream());
-        System.out.println("MD5计算完成");
+        String fileMd5;
+        if(md5FromClient != null && !md5FromClient.isEmpty()){
+            fileMd5 = md5FromClient;
+        }else{
+            //计算文件的MD5指纹
+            fileMd5 = DigestUtils.md5DigestAsHex(file.getInputStream());
+            System.out.println("MD5计算完成");
+        }
+
+
         /*---------------------逻辑去重--------------------------------------*/
         UserFile selfFile = userFileRepository.findByUserIdAndMd5(userId,fileMd5);
         if(selfFile != null){
@@ -87,6 +95,11 @@ public class FileService {
             userFile.setMD5(fileMd5);
             return userFileRepository.save(userFile);
         }
+        //执行到这里说明真没上传过这个文件
+        if(file == null || file.isEmpty()){
+            throw new IOException("服务器无此文件，必须上传实体文件！");
+        }
+
         // --- 3. 物理上传 (新文件) ---
         System.out.println("新文件，执行物理上传...");
         /*---------------------缩略图部分与物理存储部分！--------------------------------*/
@@ -245,5 +258,10 @@ public class FileService {
                 }
             }
         }
+    }
+
+    //检查文件指纹是否存在
+    public UserFile getFileByMd5(String md5){
+        return userFileRepository.findFirstByMd5(md5);
     }
 }
