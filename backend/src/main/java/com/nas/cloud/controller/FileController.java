@@ -1,5 +1,6 @@
 package com.nas.cloud.controller;
 
+import com.nas.cloud.entity.User;
 import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.service.FileService;
@@ -28,13 +29,14 @@ public class FileController {
     public String uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("userId") Long userId,
-            @RequestParam(value = "md5",required = false) String md5) {
+            @RequestParam(value = "md5",required = false) String md5,
+            @RequestParam(value = "parentId",defaultValue = "0") Long parentId) {
 
 
         //要注意异常处理,因为文件的上传有可能失败,也要给出上传成功与失败的提示
         try {
             //让服务层干活
-            UserFile savedFile = fileService.upload(file, userId,md5);
+            UserFile savedFile = fileService.upload(file, userId,md5,parentId);
             //返回成功信息
             return "上传成功:" + savedFile.getId();
         } catch (IOException e) {//捕捉错误
@@ -82,23 +84,59 @@ public class FileController {
 
     //批量返回
     @GetMapping("/list")
-    public List<UserFile> list(@RequestParam("userId") Long userId) {
+    public List<UserFile> list(
+            @RequestParam("userId") Long userId,
+            @RequestParam(value = "parentId",defaultValue = "0") Long parentId) {
         //调用service拿数据
-        List<UserFile> file = fileService.getFileList(userId);
+        List<UserFile> file = fileService.getFileList(userId,parentId);
         //直接返回List对象，Spring Boot会自动把它转换成JSON格式的字符串给浏览器
         return file;
     }
 
-    //删除文件
+    //---------文件管理的文件列表获取---------------------
+    @GetMapping("/file/list")
+    public List<UserFile> getFileList(
+            @RequestParam("userId") Long userId,
+            @RequestParam(value = "parentId",defaultValue = "0") Long parentId){
+        return fileService.getFileListForManager(userId, parentId);
+    }
+    //------相册专用（获取所有照片流）--------------------------------------------
+    @GetMapping("/gallery/list")
+    public List<UserFile> getGalleryList(@RequestParam("userId") Long userId){
+        return fileService.getGalleryList(userId);
+    }
+
+    //软删除文件
     @DeleteMapping("/file/{id}")
     public String deleteFile(@PathVariable Long id, @RequestParam("userId") Long userId) {
         try {
-            fileService.deleteFile(id, userId);
+            fileService.deleteFileToRecycleBin(id, userId);
             return "删除成功";
         } catch (RuntimeException e) {
             return "删除失败" + e.getMessage();
         }
     }
+    //还原软删除文件
+    @DeleteMapping("/file/restore/{id}")
+    public String restoreDeleteFile(@PathVariable Long id, @RequestParam("userId") Long userId) {
+        try {
+            fileService.restoreFile(id, userId);
+            return "还原成功";
+        } catch (RuntimeException e) {
+            return "还原失败" + e.getMessage();
+        }
+    }
+    //彻底删除物理文件
+    @DeleteMapping("/file/physical/{id}")
+    public String deleteFilePhysically(@PathVariable Long id, @RequestParam("userId") Long userId) {
+        try {
+            fileService.deleteFilePhysically(id, userId);
+            return "彻底删除成功";
+        } catch (RuntimeException e) {
+            return "彻底删除失败" + e.getMessage();
+        }
+    }
+
 
     //下载文件
     @GetMapping("/download/{id}")
@@ -208,5 +246,16 @@ public class FileController {
         }else{
             return "200";//前端收到200 就知道不用上传了 {"code":200,"data":true}
         }
+    }
+
+    //创建文件夹接口
+    @PostMapping("/folder/new")
+    public String newFolder(
+            @RequestParam("name") String name,
+            @RequestParam("parentId") Long parentId,
+            @RequestParam("userId") Long userId
+    ){
+        fileService.createFolder(name, parentId, userId);
+        return "创建成功";
     }
 }

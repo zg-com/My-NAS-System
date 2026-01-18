@@ -49,7 +49,7 @@ public class UserFile {
     private Boolean isRawImg;//是否为RAW格式照片
     private Boolean isLiveImg;//是否为实况图片
     private Integer status;//定义图片当前状态  0:缩略图正在处理中，1：正常，2：失败
-
+    private Boolean isFolder = false; //定义是不是文件夹
 
 
 
@@ -60,7 +60,7 @@ public class UserFile {
      * null 或 0 代表根目录
      * 以后做“多层级文件夹”或“自定义相册”时，就是通过这个字段关联
      */
-    private Long parentId;
+    private Long parentId = 0L;
 
     // --- 2. 用户交互 ---
     /**
