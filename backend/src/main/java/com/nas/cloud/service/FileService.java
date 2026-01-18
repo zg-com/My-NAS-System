@@ -12,6 +12,7 @@ import jakarta.security.auth.message.callback.PrivateKeyCallback;
 import jdk.jfr.ContentType;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 import static org.springframework.web.servlet.function.RequestPredicates.contentType;
 
@@ -36,6 +38,11 @@ public class FileService {
     //读取配置文件，读取application.properties中咱们设置的属性值
     @Value("${nas.upload.path}")
     private String uploadPath;
+
+    //注入线程池
+    @Autowired
+    @Qualifier("taskExecutor") //指定刚刚设置的那个叫做taskExecutor的线程池
+    private Executor executor;
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
     public UserFile upload(@NotNull MultipartFile file, Long userId,String md5FromClient) throws IOException {
@@ -157,6 +164,8 @@ public class FileService {
         }else if(originalFilename.toLowerCase().matches(".*\\.(cr2|nef|arw|dng|cr3|raf|rw2|pef|3fr)$")){
             userfile.setIsRawImg(true);
         }
+        //设置初始状态为0
+        userfile.setStatus(0);
         //先保存一个半成品，此时的缩略图路径都是空的
         UserFile savedFile = userFileRepository.save(userfile);
         //开启异步任务，去后台生成缩略图，这里瞬间返回，主线程会直接往下走
@@ -167,7 +176,8 @@ public class FileService {
                 e.printStackTrace();
                 System.out.println("后台处理图片失败:" + e.getMessage());
             }
-        });
+        },executor);//使用自己创建的线程池
+
 
         //保存该实体类对象到数据库中
         return savedFile;
@@ -251,9 +261,9 @@ public class FileService {
         if (!previewDir.exists()) previewDir.mkdirs();
 
         //定义缩略图文件名
-        String fileName = physicalFile.getName();
-        File thumbFile = new File(thumbDir,"thumbmin-"+fileName);
-        File previewFile = new File(previewDir,"thumbpre-" + fileName);
+        String baseName = physicalFile.getName().substring(0,physicalFile.getName().lastIndexOf(".")); //读取后缀前面的名字，从名字索引为0的地方读到最后一个.的位置
+        File thumbFile = new File(thumbDir,"thumbmin-"+baseName + ".jpg");
+        File previewFile = new File(previewDir,"thumbpre-" + baseName + ".jpg");
 
         boolean needUpdate = false;//标记是否需要更新数据库
 
@@ -268,30 +278,38 @@ public class FileService {
                 userFile.setThumbnailPrePath(previewFile.getAbsolutePath());
                 //提取Exif
                 ImageUtils.extractExif(physicalFile,userFile);
+                userFile.setStatus(1);//标记状态
                 needUpdate = true;
             } else if (contentType != null && contentType.startsWith("video/")) {
                 userFile.setIsVideo(true);
                 VideoUtils.generateVideoThumbnail(physicalFile, thumbFile);
                 userFile.setThumbnailMinPath(thumbFile.getAbsolutePath());
                 userFile.setThumbnailPrePath(thumbFile.getAbsolutePath());
+                userFile.setStatus(1);//标记状态
                 needUpdate = true;
             } else if (userFile.getFilename().toLowerCase().matches(".*\\.(cr2|nef|arw|dng|cr3|raf|rw2|pef|3fr)$")) {
                 userFile.setIsRawImg(true);
-                VideoUtils.generateVideoThumbnail(physicalFile, thumbFile);
+                VideoUtils.generateRawThumbnail(physicalFile, thumbFile);
                 userFile.setThumbnailMinPath(thumbFile.getAbsolutePath());
                 userFile.setThumbnailPrePath(thumbFile.getAbsolutePath());
+                userFile.setStatus(1);//标记状态
+                needUpdate = true;
             }
-            if(needUpdate){
-                userFileRepository.save(userFile);
-                System.out.println("后台处理完成，数据库已更新:" + userFile.getFilename());
-            }
+
 
         } catch (IOException e) {
             System.out.println("异步处理出错: " + e.getMessage());
+            userFile.setStatus(2); //标记状态
         } catch (ImageProcessingException e) {
             System.out.println("异步处理出错: " + e.getMessage());
+            userFile.setStatus(2);
         } catch (InterruptedException e) {
             System.out.println("异步处理出错: " + e.getMessage());
+            userFile.setStatus(2);
+        }
+        if(needUpdate){
+            userFileRepository.save(userFile); //将内存中已经修改参数的File，保存到数据库中
+            System.out.println("后台处理完成，数据库已更新:" + userFile.getFilename());
         }
 
     }

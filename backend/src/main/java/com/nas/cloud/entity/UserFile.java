@@ -1,6 +1,7 @@
 package com.nas.cloud.entity;
 
 import jakarta.persistence.*;
+import jdk.jshell.Snippet;
 import lombok.Data;
 import org.springframework.cglib.core.Block;
 
@@ -9,7 +10,11 @@ import java.util.Date;
 
 //告诉jpa这个是实体类,让他在数据库中建个表
 @Entity
-@Table(name="nas_file") //定义表的名称是啥
+@Table(name="nas_file",indexes = {
+        @Index(name = "idx_user_shoot_time",columnList = "userId, shootTime"),//优化时间查询
+        @Index(name = "idx_md5",columnList = "md5"),//优化秒传查询
+        @Index(name = "idx_address",columnList = "locationAddress")//优化地点查询
+}) //定义表的名称是啥，并且优化了索引
 @Data //方便lombok建立getter,setter方法
 public class UserFile {
 
@@ -43,6 +48,108 @@ public class UserFile {
     private Boolean isVideo;//是否为视频
     private Boolean isRawImg;//是否为RAW格式照片
     private Boolean isLiveImg;//是否为实况图片
+    private Integer status;//定义图片当前状态  0:缩略图正在处理中，1：正常，2：失败
+
+
+
+
+    // --- 1. 相册与文件管理 ---
+
+    /**
+     * 父文件夹ID / 相册ID
+     * null 或 0 代表根目录
+     * 以后做“多层级文件夹”或“自定义相册”时，就是通过这个字段关联
+     */
+    private Long parentId;
+
+    // --- 2. 用户交互 ---
+    /**
+     * 是否收藏 (喜欢)
+     * true = 在“我的收藏”里显示
+     */
+    private Boolean isFavorite = false;
+
+    /**
+     * 是否隐藏
+     * true = 需要密码才能查看，不在主时间轴显示
+     */
+    private Boolean isHidden = false;
+
+    // --- 3. 地图相册 (地理位置) ---
+    /**
+     * 经度 (从 Exif 提取)
+     */
+    private Double longitude;
+
+    /**
+     * 纬度 (从 Exif 提取)
+     */
+    private Double latitude;
+
+    /**
+     * 地点描述 (逆地理编码结果)
+     * 例如："北京市海淀区中关村"
+     * 以后上传时，后台调个地图API把经纬度转成文字存进去，方便搜"海淀"能搜出来
+     */
+    private String locationAddress;
+
+    // --- 4. AI 与 搜索 (核心预埋) ---
+    /**
+     * AI 识别出的标签 (JSON字符串 或 逗号分隔)
+     * 例如："dog,food,outdoor,sky"
+     * 搜索时直接 SELECT * FROM table WHERE ai_tags LIKE '%dog%'
+     */
+    @Column(length = 1000) // 设长一点
+    private String aiTags;
+
+    /**
+     * 图片中的文字 (OCR 结果)
+     * 用于模糊搜索图片里的字
+     */
+    @Column(length = 2000) // 设长一点
+    private String ocrContent;
+
+    /**
+     * 人脸分组 ID 列表
+     * 例如："face_102,face_88"
+     * 表示这张图里有这两个人
+     */
+    private String faceIds;
+
+    // ... 之前添加的 isFavorite, isHidden 等 ...
+
+    // --- 5. 回收站 (最近删除) ---
+
+
+
+    /**
+     * 是否已删除 (逻辑删除/软删除)
+     * true = 在回收站里
+     * false = 正常显示
+     */
+    private Boolean isDeleted = false;
+
+    /**
+     * 删除时间
+     * 用于计算“还剩多少天自动清除”，以及定时任务判断是否超过30天
+     */
+    private Date deleteTime;
+
+    // --- 6. 相册封面 ---
+    /**
+     * 相册封面图片的ID
+     * 只有当 isFolder = true (是文件夹/相册) 时这个字段才有意义
+     * 用户自定义封面时，就把那张图的 ID 填进来
+     */
+    private Long coverId;
+
+    // --- 7. 存储优化 (只留预览图) ---
+    /**
+     * 原始文件是否已清理
+     * true = 原图已删，只剩缩略图 (点击原图时不给看，或者提示已清理)
+     * 配合 filePath = null 使用
+     */
+    private Boolean isOriginalDeleted = false;
 
 
     //id的函数
@@ -234,5 +341,117 @@ public class UserFile {
     }
     public void setIsLiveImg(Boolean isLiveImg){
         this.isLiveImg = isLiveImg;
+    }
+    //status
+    public Integer getStatus(){
+        return this.status;
+    }
+    public void setStatus(Integer status){
+        this.status = status;
+    }
+
+
+    //--------------后续维护-------------------------------------------------------
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
+    public String getFaceIds() {
+        return faceIds;
+    }
+
+    public void setFaceIds(String faceIds) {
+        this.faceIds = faceIds;
+    }
+
+    public String getOcrContent() {
+        return ocrContent;
+    }
+
+    public void setOcrContent(String ocrContent) {
+        this.ocrContent = ocrContent;
+    }
+
+    public String getAiTags() {
+        return aiTags;
+    }
+
+    public void setAiTags(String aiTags) {
+        this.aiTags = aiTags;
+    }
+
+    public String getLocationAddress() {
+        return locationAddress;
+    }
+
+    public void setLocationAddress(String locationAddress) {
+        this.locationAddress = locationAddress;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public Boolean getHidden() {
+        return isHidden;
+    }
+
+    public void setHidden(Boolean hidden) {
+        isHidden = hidden;
+    }
+
+    public Boolean getFavorite() {
+        return isFavorite;
+    }
+
+    public void setFavorite(Boolean favorite) {
+        isFavorite = favorite;
+    }
+    public Boolean getDeleted() {
+        return isDeleted;
+    }
+
+    public void setDeleted(Boolean deleted) {
+        isDeleted = deleted;
+    }
+
+    public Date getDeleteTime() {
+        return deleteTime;
+    }
+
+    public void setDeleteTime(Date deleteTime) {
+        this.deleteTime = deleteTime;
+    }
+
+    public Long getCoverId() {
+        return coverId;
+    }
+
+    public void setCoverId(Long coverId) {
+        this.coverId = coverId;
+    }
+
+    public Boolean getOriginalDeleted() {
+        return isOriginalDeleted;
+    }
+
+    public void setOriginalDeleted(Boolean originalDeleted) {
+        isOriginalDeleted = originalDeleted;
     }
 }

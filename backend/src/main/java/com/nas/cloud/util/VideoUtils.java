@@ -36,4 +36,39 @@ public class VideoUtils {
             throw new IOException("FFmpeg 执行失败，错误码: " + exitCode);
         }
     }
+
+    //对Raw格式图片进行缩略图生成
+    public static void generateRawThumbnail(File rawFile, File targetFile) throws InterruptedException, IOException {
+        // 构造 Linux 管道命令:
+        // exiftool -b -PreviewImage "source.cr3" | convert - -resize 800x800 "target.jpg"
+        // 解释：
+        // 1. exiftool -b -PreviewImage: 以二进制(-b)提取预览图(PreviewImage)
+        // 2. | : 管道，把提取出来的JPG数据直接传给下一个命令
+        // 3. convert - : 那个减号(-)表示从标准输入(stdin)读取图片数据
+
+        String commandStr = String.format(
+                "exiftool -b -PreviewImage \"%s\" | convert - -resize 800x800 \"%s\"",
+                rawFile.getAbsolutePath(),
+                targetFile.getAbsolutePath()
+        );
+
+        // 在 Java 中执行带管道的命令，必须调用 "sh -c"
+        ProcessBuilder builder = new ProcessBuilder("sh", "-c", commandStr);
+        builder.redirectErrorStream(true);
+        Process process = builder.start();
+
+        // 打印日志 (如果 ExifTool 找不到预览图或者 convert 失败，这里能看到)
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("[RawUtils Log]: " + line);
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("RAW 转换失败 (ExifTool+IM)，错误码: " + exitCode);
+        }
+    }
 }

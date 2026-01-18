@@ -19,9 +19,11 @@ RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak \
     && sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list \
     && sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list \
     && apt-get update \
-    && apt-get install -y ffmpeg \
+    && apt-get install -y ffmpeg imagemagick libimage-exiftool-perl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+RUN sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/g' /etc/ImageMagick-6/policy.xml
 #创建一个工作目录
 WORKDIR /app
 #把打包好的jar包复制进容器，并且改名为app.jar
