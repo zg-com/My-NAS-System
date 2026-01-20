@@ -5,6 +5,7 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.nas.cloud.entity.UserFile;
+import com.nas.cloud.repository.TimelineSummary;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.util.ImageUtils;
 import com.nas.cloud.util.VideoUtils;
@@ -414,5 +415,9 @@ public class FileService {
 
     }
 
+    //获取时间图片摘要(哪年哪月有多少张图）
+    public List<TimelineSummary> getTimeLineSummary(Long userId){
+        return userFileRepository.findTimelineSummary(userId);
+    }
 
 }

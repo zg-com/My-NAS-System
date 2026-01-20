@@ -2,6 +2,7 @@ package com.nas.cloud.controller;
 
 import com.nas.cloud.entity.User;
 import com.nas.cloud.entity.UserFile;
+import com.nas.cloud.repository.TimelineSummary;
 import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.service.FileService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -257,5 +258,11 @@ public class FileController {
     ){
         fileService.createFolder(name, parentId, userId);
         return "创建成功";
+    }
+
+    //获取光轴数据（图片哪年哪月有多少张）
+    @GetMapping("/gallery/timeline-summary")
+    public List<TimelineSummary> getTimeLineSummary(@RequestParam("userId") Long userId){
+        return fileService.getTimeLineSummary(userId);
     }
 }

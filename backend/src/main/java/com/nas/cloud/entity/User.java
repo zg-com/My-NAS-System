@@ -12,9 +12,39 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)//声明主键自增(1,2,3...)
     private long id;
     //对应数据库中的username字段
-    private String username;
+    @Column(unique = true,nullable = false) //不能重复，不能没有
+    private String username;//用户名
     //对应数据库中password字段
-    private String password;
+    @Column(nullable = false) //不能为空
+    private String password;//密码
+    private String email;//邮箱
+    private String phoneNumber;//手机号
+
+
+    //新增角色判断
+    //管理员存“ROLE_ADMIN”,普通用户存“ROLE_USER”
+    //前面加上ROLE_是Spring Security的默认规范
+    private String role;
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 
     public long getId(){
         return this.id;
