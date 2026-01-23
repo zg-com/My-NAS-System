@@ -30,10 +30,9 @@
                 alert('登录失败')
             }
     }
-
-    const routerTohome = () =>{
-       router.push('/home')
-    }
+    
+    
+    
     
 </script>
 
@@ -53,7 +52,7 @@
                         <a href="">忘记密码</a>
                     </div>
                     <div class="register-court">
-                        <a href="">注册</a>
+                        <a href="" @click="router.push('/register')">注册</a>
                     </div>
                 </div>
                 <button class="login-button" @click="handleLoin">登录</button>

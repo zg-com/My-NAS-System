@@ -40,7 +40,7 @@
         padding:  0;
         margin-left: 0;
         background-color: antiquewhite;
-        position: fixed;
+
         top: 0;
         left: 0;
         display: flex;

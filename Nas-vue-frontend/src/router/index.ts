@@ -3,6 +3,7 @@ import { createRouter,createWebHashHistory,createWebHistory } from "vue-router";
 //引入自己的组件
 import login from "@/components/Login/login.vue";
 import home from "@/Newcomponents/home.vue";
+import register from "@/components/Login/register.vue";
 
 const router = createRouter({
     history:createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,11 @@ const router = createRouter({
             path:'/home',//网址
             name:'home',//给路由起一个名字，方便调用
             component:home, //对应显示的组件
+        },
+        {
+            path:'/register',//网址
+            name:'register',//给路由起一个名字，方便调用
+            component:register, //对应显示的组件
         }
     ]
 })

@@ -5,7 +5,7 @@
     <div>
         <div class="barspace">
             <div class="barSpaceItem1">
-                
+
             </div>
         </div>
     </div>
@@ -14,5 +14,11 @@
 
 
 <style scoped>
-
+    .barspace{
+        width: 220px;
+        height: 100vh;
+        background-color: aqua;
+        
+        
+    }
 </style>
