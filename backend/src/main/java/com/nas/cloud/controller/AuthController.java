@@ -68,9 +68,16 @@ public class AuthController {
 
     //注册接口
     @PostMapping("/register")
-    public String register(@RequestBody User user){
+    public Map<String,Object> register(@RequestBody User user){
+        Map<String, Object> result = new HashMap<>();
+        System.out.println("根据用户名查询结果为："+userRepository.findByUsername(user.getUsername()));
         //检查是否已被注册
-        if(userRepository.findByUsername(user.getUsername()) != null) return "注册失败，用户已存在";
+        if(userRepository.findByUsername(user.getUsername()) != null) {
+            System.out.println(userRepository.findByUsername(user.getUsername()));
+            result.put("code",0);
+            result.put("msg", "用户已存在");
+            return result;
+        }
 
         //密码加密
         String encodedPassword = passwordEncoder.encode(user.getPassword());
@@ -83,6 +90,11 @@ public class AuthController {
 
         //保存
         userRepository.save(user);
-        return "注册成功";
+
+        result.put("code",200);
+        result.put("msg", "登陆成功");
+        result.put("userId", user.getId());
+        result.put("username",user.getUsername());
+        return result;
     }
 }
