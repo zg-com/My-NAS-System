@@ -1,11 +1,8 @@
 <script setup lang="ts">
-    import register from './components/Login/register.vue';
-  
+
 </script>
 
-
 <template>
-
     <router-view></router-view>
 </template>
 

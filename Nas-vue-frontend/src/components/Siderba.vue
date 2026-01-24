@@ -1,10 +1,21 @@
 <script setup lang="ts">
     import {ref} from 'vue'
-    import icon from '../../source/icon/SideDocker/icon.png'
+    import icon from '@/source/icon/SideDocker/icon.png'
+    import { useRouter } from 'vue-router'
     const fistPageIcon = ref(icon)
     const FilePageIcon = ref(icon)
     const DataPageIcon = ref(icon)
     const userImgUrl = ref(icon)
+    const router = useRouter()
+    const toHomePage = () =>{
+        router.push('/home/homePage')
+    }
+    const toFilePage = () =>{
+        router.push('/home/filePage')
+    }
+    const toDataPage = () =>{
+        router.push('/home/dataPage')
+    }
 
 </script>
 
@@ -13,15 +24,15 @@
         <div class="barspace">
             <div class="topLogo" :style="{backgroundImage:`url(${userImgUrl})`}"></div>
             <div class="choiceButton">
-                <div class="buttonItem">
+                <div class="buttonItem" @click="toHomePage">
                     <div class="buttonIcon" :style="{backgroundImage:`url(${userImgUrl})`}"></div>
                     <div class="buttonContent">首页</div>
                 </div>
-                <div class="buttonItem" >
+                <div class="buttonItem" @click="toFilePage">
                     <div class="buttonIcon" :style="{backgroundImage:`url(${userImgUrl})`}"></div>
                     <div class="buttonContent">文件</div>
                 </div>
-                <div class="buttonItem">
+                <div class="buttonItem" @click="toDataPage">
                     <div class="buttonIcon" :style="{backgroundImage:`url(${userImgUrl})`}"></div>
                     <div class="buttonContent">信息</div>
                 </div>

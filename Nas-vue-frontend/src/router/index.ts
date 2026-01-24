@@ -1,9 +1,12 @@
 import { createRouter,createWebHashHistory,createWebHistory } from "vue-router";
 
 //引入自己的组件
-import login from "@/components/Login/login.vue";
-import home from "@/Newcomponents/home.vue";
-import register from "@/components/Login/register.vue";
+import login from "@/views/Login/login.vue";
+import home from "@/layout/home.vue";
+import register from "@/views/Login/register.vue";
+import dataPage from "@/views/Pages/dataPage.vue";
+import homePage from "@/views/Pages/homePage.vue";
+import filePage from "@/views/Pages/filePage.vue";
 
 const router = createRouter({
     history:createWebHistory(import.meta.env.BASE_URL),
@@ -18,14 +21,32 @@ const router = createRouter({
             component:login //对应显示的组件
         },
         {
-            path:'/home',//网址
-            name:'home',//给路由起一个名字，方便调用
-            component:home, //对应显示的组件
+            path:'/home',
+            name:'home',
+            redirect:'/home/homePage',
+            component:home,
+            children:[
+                {
+                    path:'homePage',
+                    name:'homePage',
+                    component: homePage
+                },
+                {
+                    path:'filePage',
+                    name:'filePage',
+                    component:filePage 
+                },
+                {
+                    path:'dataPage',
+                    name:'dataPage',
+                    component:dataPage 
+                }
+            ]
         },
         {
-            path:'/register',//网址
-            name:'register',//给路由起一个名字，方便调用
-            component:register, //对应显示的组件
+            path:'/register',
+            name:'register',
+            component:register 
         }
     ]
 })
