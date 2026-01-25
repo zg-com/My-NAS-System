@@ -31,6 +31,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         //从请求头中找Authorization字段
         //前端发送请求的时候必须带上：Authorization：Bearer<token字符串>
         String authHeader = request.getHeader("Authorization");
+        //新增对url自带token的支持
+        if (authHeader == null && request.getParameter("token") != null) {
+            authHeader = "Bearer " + request.getParameter("token");
+        }
 
         String token = null;
         String username  = null;

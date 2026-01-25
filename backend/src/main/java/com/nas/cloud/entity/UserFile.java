@@ -28,7 +28,7 @@ public class UserFile {
     private String filePath; //真实存储路径
     private Date uploadTime; //上传时间
     private Long userId;//这张照片属于哪个用户
-    private Boolean isImage;//是否是照片（用于快速过滤）
+    private Boolean isImage=false;//是否是照片（用于快速过滤）
     private LocalDateTime shootTime;//拍摄时间（区别于上传时间）
     private Integer width;//图片宽
     private Integer height;//图片高
@@ -45,9 +45,9 @@ public class UserFile {
     private String thumbnailMinPath;//小缩略图路径
     private String thumbnailPrePath;//全屏预览缩略图路径
     private String md5;//文件指纹(MD5)用于去重和秒传
-    private Boolean isVideo;//是否为视频
-    private Boolean isRawImg;//是否为RAW格式照片
-    private Boolean isLiveImg;//是否为实况图片
+    private Boolean isVideo=false;//是否为视频
+    private Boolean isRawImg=false;//是否为RAW格式照片
+    private Boolean isLiveImg=false;//是否为实况图片
     private Integer status;//定义图片当前状态  0:缩略图正在处理中，1：正常，2：失败
     private Boolean isFolder = false; //定义是不是文件夹
     private Long relatedId;//关联文件id，主要用于LivePhoto，如果是jpg这个id对应mov，如果是mov，这个就对应jpg的id

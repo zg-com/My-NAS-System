@@ -159,6 +159,9 @@ public class FileService {
         userfile.setUserId(userId);
         //写入文件指纹
         userfile.setMD5(fileMd5);
+        userfile.setIsImage(false);
+        userfile.setIsVideo(false);
+        userfile.setIsRawImg(false);
         if (type.startsWith("image/")) {
             userfile.setIsImage(true);
         } else if (type.startsWith("video/")) {
@@ -210,7 +213,7 @@ public class FileService {
     //获取图片列表
     public List<UserFile> getGalleryList(Long userId) {
         Sort sort = Sort.by(Sort.Direction.DESC, "shootTime", "uploadTime");//优先按照拍摄时间排序
-        return userFileRepository.findByUserIdAndIsFolderFalse(userId, sort);
+        return userFileRepository.findByUserIdAndIsFolderFalseAndIsDeletedFalse(userId, sort);
     }
 
     //查询图片所有列表，或图片下的所有内容
@@ -384,7 +387,9 @@ public class FileService {
                 needUpdate = true;
             }
             // 如果它既不是图片，也不是视频，也不是RAW
-            if (!userFile.getIsImage() && !userFile.getIsVideo() && !userFile.getIsRawImg()) {
+            if (!Boolean.TRUE.equals(userFile.getIsImage()) &&
+                    !Boolean.TRUE.equals(userFile.getIsVideo()) &&
+                    !Boolean.TRUE.equals(userFile.getIsRawImg())) {
                 // 普通文件不需要生成缩略图，直接标记为成功即可
                 // 如果你想做的细一点，可以根据后缀名设置 icon，比如 userFile.setType("pdf")
                 // 但最重要的是：要让代码走到下面去把 status 设为 1

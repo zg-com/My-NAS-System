@@ -25,7 +25,7 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     //---------给资源管理器用---------------------------
     List<UserFile> findByUserIdAndParentId(Long userId, Long parentId, Sort sort);
     //---------给图库用-----------------------------------
-    List<UserFile> findByUserIdAndIsFolderFalse(Long userId , Sort sort);
+    List<UserFile> findByUserIdAndIsFolderFalseAndIsDeletedFalse(Long userId , Sort sort);
 
     /**
      * 获取时光轴聚合数据
