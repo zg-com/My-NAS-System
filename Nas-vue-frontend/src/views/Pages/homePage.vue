@@ -1,13 +1,16 @@
 <template>
     <div>
-首页
+        <AddFiles></AddFiles>
+        
     </div>
+    <galleryView></galleryView>
 </template>
 
-<script>
-
+<script setup>
+import AddFiles from '@/components/addFiles.vue';
+import galleryView from '@/components/galleryView.vue';
 </script>
 
-<style  scoped>
+<style>
 
 </style>

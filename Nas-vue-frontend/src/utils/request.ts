@@ -4,14 +4,14 @@ import axios from "axios";
 const request = axios.create({
     baseURL:'http://100.87.189.97:8080',
     // baseURL:'http://localhost:8080',
-    timeout:5000
+    timeout:60000
 })
 
 //请求拦截器，每次请求带上token
 request.interceptors.request.use(config =>{
     const token = localStorage.getItem('token')
     if(token){
-        config.headers['Authorization'] = token //对应后端jwt接收的字段
+        config.headers['Authorization'] = `Bearer ${token}` //对应后端jwt接收的字段
     }
     return config
 })

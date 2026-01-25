@@ -19,6 +19,7 @@
             if(res.data.code === 200){
                 localStorage.setItem('token',res.data.token)
                 localStorage.setItem('isLogin','true')
+                localStorage.setItem('userId',res.data.userId)
 
                 alert('登录成功')
                 router.push('/home')
