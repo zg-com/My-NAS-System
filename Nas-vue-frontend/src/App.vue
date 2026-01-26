@@ -16,6 +16,7 @@
         width: 100%;
         height: 100%;
         font-family: 'Avenir',Arial, Helvetica, sans-serif;
+        user-select: none;
     }
     *{
         box-sizing: border-box;

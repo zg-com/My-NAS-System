@@ -50,10 +50,17 @@ export interface UserFile{
 
     previewUrl?:string //用于前端显示的临时字段
     thumbnailUrl?:string
+    originalUrl?:string
+    index:number //前端用于定位图片
 }
 //定义时间线文件类型
 export interface TimeGroup{
+    year:string
     title:string;
+    files:UserFile[];
+}
+export interface NameGroup{
+    groupname:string;
     files:UserFile[];
 }
 //上传文件
@@ -87,8 +94,8 @@ export const getGalleryTimeLineApi = (userId:string | null) => {
 }
 
 //获取图片微型预览
-export const getFileThumbnailApi = (fildId:number,userId:string | null) => {
-    return request.get(`/file/img/thumbnail/${fildId}`,{
+export const getFileThumbnailApi = (fileId:number,userId:string | null) => {
+    return request.get(`/file/img/thumbnail/${fileId}`,{
         params:{
             userId:userId,
             
@@ -105,6 +112,16 @@ export const getFilePreviewApi = (fileId:number,userId:string | null) =>{
     responseType:'blob'
 })
 }
+//获取原图
+export const getOriginalFileApi = (fileId:number,userId:string | null) =>{
+    return request.get(`/file/img/original/${fileId}`,{
+        params:{
+            userId:userId
+        },
+        responseType:'blob'
+    })
+}
+
 
 export const deletePhysically = (fileId:number,userId:string | null) => {
     return request.delete(`/file/physical/${fileId}`,{
@@ -126,6 +143,13 @@ export const deletePhysicalFileApi = (fileId: number, userId: string | null) => 
     return request.delete(`/file/physical/${fileId}`, {
         params: { userId: userId }
     });
+}
+export const downloadFile = (fileId:number,userId:string|null) =>{
+    return request.get(`/file/img/preview/${fileId}`,{
+        params:{
+            userId:userId
+        }
+    })
 }
 
 

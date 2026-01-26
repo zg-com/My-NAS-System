@@ -143,7 +143,7 @@ public class FileController {
     @GetMapping("/download/{id}")
     public void downloadFile(@PathVariable Long id, @RequestParam("userId") Long userId, HttpServletResponse response) throws IOException {
         UserFile userFile = fileService.getFileById(id);
-
+        System.out.println("========== 下载接口被调用了！ID: " + id + " ==========");
         if (userFile == null) {
             response.setStatus(404);
             return;
@@ -264,5 +264,22 @@ public class FileController {
     @GetMapping("/gallery/timeline-summary")
     public List<TimelineSummary> getTimeLineSummary(@RequestParam("userId") Long userId){
         return fileService.getTimeLineSummary(userId);
+    }
+
+    //获取原图数据
+    @GetMapping("/file/img/original/{id}")
+    public void getOriginal(@PathVariable Long id,HttpServletResponse response,@RequestParam("userId") Long userId) throws IOException{
+        UserFile userFile  = fileService.getFileById(id);
+        if(!userFile.getUserId().equals(userId)){
+            throw new RuntimeException("无权访问");
+        }
+        File file = null;
+        if(userFile.getFilePath() != null){
+            file = new File(userFile.getFilePath());
+        }
+
+        response.setHeader("Cache-Control", "public,max-age = 86400");
+        response.setContentType((userFile.getType()));
+        writeFileToResponse(file, response);
     }
 }

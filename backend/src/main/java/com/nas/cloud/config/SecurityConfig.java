@@ -74,7 +74,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req->req
                         //白名单
                         .requestMatchers("/login","/register","/error").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS,"/**").permitAll()
+
 
                         //其他所有接口必须登录认证后才能访问
                         .anyRequest().authenticated()
