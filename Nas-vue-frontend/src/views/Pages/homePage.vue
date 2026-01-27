@@ -6,18 +6,17 @@
         <div class="subSiderba">
             <subSiderba></subSiderba>
         </div>
-        <div class="galleryView">
-            <galleryView></galleryView>
-        </div>
+        <div class="routerview">
+            <router-view></router-view>
+        </div> 
         
     </div>
     
 </template>
 
 <script setup>
-import AddFiles from '@/components/addFiles.vue';
-import galleryView from '@/components/galleryView.vue';
-import subSiderba from '@/components/subSiderba.vue';
+import AddFiles from '@/components/customComponents/addFiles.vue';
+import subSiderba from '@/components/customComponents/subSiderba.vue';
 </script>
 
 <style lang="scss" scoped>
@@ -30,7 +29,7 @@ import subSiderba from '@/components/subSiderba.vue';
             overflow: hidden;
 
         }
-        .galleryView{
+        .routerview{
             flex:1;//自动填满侧边栏剩下的宽度
             height: 100%;
             overflow-y: auto;

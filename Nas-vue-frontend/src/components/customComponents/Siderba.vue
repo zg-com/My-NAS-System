@@ -50,7 +50,7 @@
         height: 100vh;
         padding:  0;
         margin-left: 0;
-        background-color: antiquewhite;
+        background-color: #F5F5F6;
 
         top: 0;
         left: 0;

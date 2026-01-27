@@ -34,7 +34,7 @@
     import { downloadFile, getOriginalFileApi, 
             type UserFile,BASE_URL} from '@/api/fileApi';
     import { ref ,watch} from 'vue';
-    import deleteWindow from './deleteWindow.vue';
+    import deleteWindow from '@/components/customComponents/deleteWindow.vue';
 
     //定义这个组件可以接收的数据
     const props = defineProps<{

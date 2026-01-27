@@ -7,6 +7,11 @@ import register from "@/views/Login/register.vue";
 import dataPage from "@/views/Pages/dataPage.vue";
 import homePage from "@/views/Pages/homePage.vue";
 import filePage from "@/views/Pages/filePage.vue";
+import galleryView from "@/components/galleryView.vue";
+import fileBin from "@/components/fileBin.vue";
+import myLike from "@/components/myLike.vue";
+import fileManager from "@/components/fileManager.vue";
+import codeCase from "@/components/codeCase.vue";
 
 const router = createRouter({
     history:createWebHistory(import.meta.env.BASE_URL),
@@ -29,7 +34,36 @@ const router = createRouter({
                 {
                     path:'homePage',
                     name:'homePage',
-                    component: homePage
+                    redirect:'/home/homePage/galleryView',
+                    component: homePage,
+                    children:[
+                        {
+                            path:'galleryView',
+                            name:'galleryView',
+                            component:galleryView 
+                        },
+                        {
+                            path:'fileBin',
+                            name:'fileBin',
+                            component:fileBin 
+                        },
+                        {
+                            path:'myLike',
+                            name:'myLike',
+                            component:myLike 
+                        },
+                        {
+                            path:'fileManager',
+                            name:'fileManager',
+                            component:fileManager 
+                        },
+                        {
+                            path:'codeCase',
+                            name:'codeCase',
+                            component:codeCase 
+                        }
+                        
+                    ]
                 },
                 {
                     path:'filePage',

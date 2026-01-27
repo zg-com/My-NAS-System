@@ -1,6 +1,7 @@
 <template>
-    <search></search>
+    
     <div class="gallerySpace">
+        <search></search>
         <div class="topMode">
             <span>相册</span>
         </div>
@@ -23,11 +24,11 @@
 </template>
 
 <script setup lang="ts">
-    import Search from './Search.vue';
+    import Search from '@/components/customComponents/Search.vue';
     import{ref,onMounted} from 'vue'
     import { getGalleryFileListApi,getFilePreviewApi,getGalleryTimeLineApi,getFileThumbnailApi } from '@/api/fileApi';
     import { type UserFile ,type TimeGroup,type NameGroup} from '@/api/fileApi';
-    import lightBox from './lightBox.vue';
+    import lightBox from '@/components/customComponents/lightBox.vue';
     import { all } from 'axios';
     //----------------------数据部分--------------------
     const showLightBox = ref(false)
@@ -169,6 +170,7 @@
         user-select: none;
         width: 100%;
         height: 100%;
+        margin-left: 20px;
         // background-color: rgb(241, 136, 0);
         .topMode{
             width: 100%;
@@ -193,7 +195,7 @@
                 }
                 .grid-container{
                     display: grid;
-                    grid-template-columns: repeat(auto-fill,minmax(200px,1fr));//每个格子不能小于200px，1fr是上限，如果右边不足一个格子，就自动撑满白边
+                    grid-template-columns: repeat(auto-fill,minmax(150px,1fr));//每个格子不能小于200px，1fr是上限，如果右边不足一个格子，就自动撑满白边
                     gap: 20px; //设置每个各自之间的间隔
 
                     .photoItems{
