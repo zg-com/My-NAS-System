@@ -282,4 +282,10 @@ public class FileController {
         response.setContentType((userFile.getType()));
         writeFileToResponse(file, response);
     }
+
+    //获取回收站文件列表
+    @GetMapping("file/recycle")
+    public List<UserFile> getRecycleToBinList(@RequestParam("userId") Long userId){
+        return fileService.getRecycleBinList(userId);
+    }
 }

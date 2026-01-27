@@ -24,6 +24,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -121,8 +122,10 @@ public class FileService {
         if (!basePath.endsWith(File.separator)) {
             basePath += File.separator;//没有的话就自己加上
         }
+        String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
+        String userPath = userId.toString();
         //定义三个子目录
-        File originalDir = new File(basePath + "original");
+        File originalDir = new File(basePath + "original" + File.separator + userPath + File.separator + datePath);
 
         //自动创建文件夹
         if (!originalDir.exists()) originalDir.mkdirs();
@@ -212,8 +215,8 @@ public class FileService {
     //------图库专用-------------------------------------------
     //获取图片列表
     public List<UserFile> getGalleryList(Long userId) {
-        Sort sort = Sort.by(Sort.Direction.DESC, "shootTime", "uploadTime");//优先按照拍摄时间排序
-        return userFileRepository.findByUserIdAndIsFolderFalseAndIsDeletedFalse(userId, sort);
+
+        return userFileRepository.findGalleryList(userId);
     }
 
     //查询图片所有列表，或图片下的所有内容
@@ -345,12 +348,19 @@ public class FileService {
         System.out.println("开始后台处理文件：" + userFile.getFilename());
         String contentType = userFile.getType();
         //创建路径
-        File thumbDir = new File(uploadPath + File.separator + "thumbnail");
-        File previewDir = new File(uploadPath + File.separator + "preview");
+        String basePath = uploadPath;
+        if (!basePath.endsWith(File.separator)) {
+            basePath += File.separator;//没有的话就自己加上
+        }
+        String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
+        String userPath = userFile.getUserId().toString();
+        File thumbDir = new File(uploadPath + File.separator + "thumbnail" + File.separator + userPath + File.separator + datePath);
+        File previewDir = new File(uploadPath + File.separator + "preview" + File.separator + userPath + File.separator + datePath);
         if (!thumbDir.exists()) thumbDir.mkdirs();
         if (!previewDir.exists()) previewDir.mkdirs();
 
         //定义缩略图文件名
+
         String baseName = physicalFile.getName().substring(0, physicalFile.getName().lastIndexOf(".")); //读取后缀前面的名字，从名字索引为0的地方读到最后一个.的位置
         File thumbFile = new File(thumbDir, "thumbmin-" + baseName + ".jpg");
         File previewFile = new File(previewDir, "thumbpre-" + baseName + ".jpg");
@@ -423,6 +433,11 @@ public class FileService {
     //获取时间图片摘要(哪年哪月有多少张图）
     public List<TimelineSummary> getTimeLineSummary(Long userId){
         return userFileRepository.findTimelineSummary(userId);
+    }
+
+    //获取回收站文件列表
+    public List<UserFile> getRecycleBinList(Long userId){
+        return userFileRepository.findByUserIdAndIsDeletedTrueOrderByDeleteTimeDesc(userId);
     }
 
 }

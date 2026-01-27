@@ -35,14 +35,14 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
      * 3. 这里的返回值 List<TimelineSummary> 会自动把 SQL 结果映射进去
      */
     @Query(value = "SELECT " +
-            "YEAR(shoot_time) AS year, " +
-            "MONTH(shoot_time) AS month, " +
+            "YEAR(IFNULL(shoot_time, upload_time)) AS year, " +
+            "MONTH(IFNULL(shoot_time, upload_time)) AS month, " +
             "COUNT(*) AS count " +
             "FROM nas_file " +
             "WHERE user_id = :userId " +
             "AND is_deleted = 0 " +
-            "AND shoot_time IS NOT NULL " +
-            "GROUP BY YEAR(shoot_time), MONTH(shoot_time) " +
+            // 注意：这里删除了 AND shoot_time IS NOT NULL，因为我们要包含只有上传时间的图片
+            "GROUP BY YEAR(IFNULL(shoot_time, upload_time)), MONTH(IFNULL(shoot_time, upload_time)) " +
             "ORDER BY year DESC, month DESC",
             nativeQuery = true)
     List<TimelineSummary> findTimelineSummary(@Param("userId") Long userId);
@@ -50,4 +50,18 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     //支持按照月份和年份查找
     @Query(value = "SELECT * FROM nas_file WHERE user_id = :userId AND YEAR(shoot_time) = :year AND MONTH(shoot_time) = :month AND is_deleted = 0 ORDER BY shoot_time DESC", nativeQuery = true)
     List<UserFile> findByYearAndMonth(@Param("userId") Long userId, @Param("year") Integer year, @Param("month") Integer month);
+
+    /**
+     * 图库专用列表查询
+     * 逻辑：查找该用户、非文件夹、未删除的文件
+     * 排序：优先取 shootTime，如果为 null 则取 uploadTime，按这个“有效时间”降序排列
+     */
+    @Query("SELECT f FROM UserFile f " +
+            "WHERE f.userId = :userId " +
+            "AND f.isFolder = false " +
+            "AND f.isDeleted = false " +
+            "ORDER BY COALESCE(f.shootTime, f.uploadTime) DESC, f.id DESC")
+    List<UserFile> findGalleryList(@Param("userId") Long userId);
+
+    List<UserFile> findByUserIdAndIsDeletedTrueOrderByDeleteTimeDesc(Long userId);
 }
