@@ -1,7 +1,5 @@
 <template>
-    <div>
-        <AddFiles></AddFiles>       
-    </div>
+    
     <div class="layout">
         <div class="subSiderba">
             <subSiderba></subSiderba>

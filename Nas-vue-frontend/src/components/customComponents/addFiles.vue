@@ -1,21 +1,29 @@
 <template>
-    <input type="file" 
+    <Teleport to="body">
+        <div class="addSpace">
+            <div class="menu" v-if="showMenu" >
+            <li v-for="item in currentOptions" :key="item.label" @click="handleAction(item.action)">
+                {{ item.label }}
+            </li>
+        </div>
+        <input type="file" 
             ref="fileInputRef" 
             style="display: none;" 
             multiple 
             :accept="acceptType" 
             @change="handleBatchUpload">
             
-     <div class="space">
-        <div class="menu" v-if="showMenu" >
-            <li v-for="item in currentOptions" :key="item.label" @click="handleAction(item.action)">
-                {{ item.label }}
-            </li>
+        <div class="space">
+            
+            <button @click="showMenu = !showMenu">
+                <span>+</span>
+            </button>
         </div>
-        <button @click="showMenu = !showMenu">
-            <span>+</span>
-        </button>
-     </div>
+
+        
+    </div>
+    
+    </Teleport> 
 </template>
 
 <script setup lang="ts">
@@ -24,6 +32,7 @@ import request from '@/utils/request';
 import { computeFileMD5 } from '@/utils/md5';
 import { uploadFileApi } from '@/api/fileApi';
 
+//定义接收
 const props = defineProps({
     scene:{
         type: String,
@@ -115,9 +124,8 @@ const handleBatchUpload = async (event:Event) => {
 }
 </script>
 <style scoped>
+
 .space{
-        width: 160px;
-        height: 260px;
         position: fixed;
         bottom: 5%;
         right: 5%;
@@ -143,8 +151,10 @@ const handleBatchUpload = async (event:Event) => {
     }
     .menu{
         width: 160px;
-        height: 140px;
-        position: relative;
+        height: auto;
+        position: absolute;
+        bottom: 100px; 
+        right: 60px; 
         margin-bottom: 10px;
         background-color: #627CFC;
         border-radius: 10px;

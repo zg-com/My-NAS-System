@@ -63,6 +63,7 @@ export interface NameGroup{
     groupname:string;
     files:UserFile[];
 }
+
 //上传文件
 export const uploadFileApi = (formData:FormData) => {
     return request.post('/upload',formData);
@@ -146,6 +147,36 @@ export const deletePhysicalFileApi = (fileId: number, userId: string | null) => 
 }
 export const downloadFile = (fileId:number,userId:string|null) =>{
     return request.get(`/file/img/preview/${fileId}`,{
+        params:{
+            userId:userId
+        }
+    })
+}
+
+//创建文件夹
+export const createFolder = (folderName:string,parentId:number,userId:string) => {
+    return request.post('/folder/new',{
+        params:{
+            name:folderName,
+            parentId:parentId,
+            userId:userId
+        }
+    })
+}
+
+//获取文件列表
+export const getFolderFileList = (userId:string,parentId:number) => {
+    return request.get('/file/list',{
+        params:{
+            userId:userId,
+            parentId:parentId
+        }
+    })
+}
+
+//获取回收站列表
+export const getRecycleToBinList = (userId:string) => {
+    return request.get('/file/recycle',{
         params:{
             userId:userId
         }

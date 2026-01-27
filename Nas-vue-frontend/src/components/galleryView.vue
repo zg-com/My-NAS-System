@@ -1,5 +1,8 @@
 <template>
-    
+    <div>
+        <addFiles
+            :scene="currentStyleOfPosition"></addFiles>       
+    </div>
     <div class="gallerySpace">
         <search></search>
         <div class="topMode">
@@ -24,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+    import addFiles from './customComponents/addFiles.vue';
     import Search from '@/components/customComponents/Search.vue';
     import{ref,onMounted} from 'vue'
     import { getGalleryFileListApi,getFilePreviewApi,getGalleryTimeLineApi,getFileThumbnailApi } from '@/api/fileApi';
@@ -31,6 +35,7 @@
     import lightBox from '@/components/customComponents/lightBox.vue';
     import { all } from 'axios';
     //----------------------数据部分--------------------
+    const currentStyleOfPosition = 'album'
     const showLightBox = ref(false)
     //顶部图库模式分类
     const topMode = [
@@ -94,7 +99,8 @@
                 // 边界检查：防止数据对不上导致越界
                 if (globalPhotoIndex >= photodata.length) break;
                 let file:UserFile = photodata[globalPhotoIndex]
-                if(file.isDeleted) continue //被删除了的不要
+                //被删除了的不要
+                if(file.isDeleted) continue
                 file.index = globalPhotoIndex
                 sumCount.value++
                 isLoading.value[file.index] = true
