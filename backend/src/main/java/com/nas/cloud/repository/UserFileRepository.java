@@ -64,4 +64,13 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     List<UserFile> findGalleryList(@Param("userId") Long userId);
 
     List<UserFile> findByUserIdAndIsDeletedTrueOrderByDeleteTimeDesc(Long userId);
+
+    //找特定文件夹下的同名文件夹
+    UserFile findByUserIdAndParentIdAndFilenameAndIsFolderTrue(Long userId,Long parentId,String filename);
+
+    //找当前文件夹下的同名文件夹(之前的逻辑没有办法在不同的文件夹中存放相同的文件，因为之前的md5查重是全局查重）w
+    UserFile findByUserIdAndMd5AndParentId(Long userId,String md5,Long parentId);
+
+    //查一下相同的这个md5被用了多少次，为同一物理文件映射多前端逻辑文件做铺垫，避免彻底删除，直接把多人拥有的这个文件一起删了
+    long countByMD5(String md5);
 }

@@ -31,13 +31,14 @@ public class FileController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("userId") Long userId,
             @RequestParam(value = "md5",required = false) String md5,
-            @RequestParam(value = "parentId",defaultValue = "0") Long parentId) {
+            @RequestParam(value = "parentId",defaultValue = "0") Long parentId,
+            @RequestParam(value = "relativePath", required = false) String relativePath) {
 
 
         //要注意异常处理,因为文件的上传有可能失败,也要给出上传成功与失败的提示
         try {
             //让服务层干活
-            UserFile savedFile = fileService.upload(file, userId,md5,parentId);
+            UserFile savedFile = fileService.upload(file, userId,md5,parentId,relativePath);
             //返回成功信息
             return "上传成功:" + savedFile.getId();
         } catch (IOException e) {//捕捉错误

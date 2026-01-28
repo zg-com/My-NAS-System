@@ -4,6 +4,7 @@ package com.nas.cloud.service;
 import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
+import com.nas.cloud.entity.User;
 import com.nas.cloud.entity.UserFile;
 import com.nas.cloud.repository.TimelineSummary;
 import com.nas.cloud.repository.UserFileRepository;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 import static org.springframework.web.servlet.function.RequestPredicates.contentType;
+import static org.springframework.web.servlet.function.RequestPredicates.path;
 
 @Service //告诉Spring我是干活的
 public class FileService {
@@ -48,7 +50,29 @@ public class FileService {
     private Executor executor;
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
-    public UserFile upload(@NotNull MultipartFile file, Long userId, String md5FromClient, Long parentId) throws IOException {
+    public UserFile upload(@NotNull MultipartFile file, Long userId, String md5FromClient, Long parentId,String relativePath) throws IOException {
+
+        //解析相对路径，按照传入的文件夹存储,".."是为了防止访问到上层不该访问的位置
+        if(relativePath != null && !relativePath.contains("..")){
+            String[] parts = relativePath.split("/");
+
+            //循环处理每一层目录
+            for(int i = 0 ;i <= parts.length-1; i++){
+                String pathName = parts[i];
+                if(pathName == null) continue;
+                //检查一下当前的目录里面有没有叫这个名字的文件夹
+                UserFile folder = userFileRepository.findByUserIdAndParentIdAndFilenameAndIsFolderTrue(userId, parentId, pathName);
+                if(folder == null){
+                    //不存在这个文件夹就自动创建
+                    System.out.println("自动创建文件夹：" + pathName);
+                    folder = createFolder(pathName, parentId, userId);
+                }
+
+                //注意更新一下parentId进入下一层之前
+                parentId = folder.getParentId();
+            }
+
+        }
         //MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
         String fileMd5;
         if (md5FromClient != null && !md5FromClient.isEmpty()) {
@@ -61,7 +85,8 @@ public class FileService {
 
 
         /*---------------------逻辑去重--------------------------------------*/
-        UserFile selfFile = userFileRepository.findByUserIdAndMd5(userId, fileMd5);
+        //此时经过循环parentId已经变成了最深的那个目录的了
+        UserFile selfFile = userFileRepository.findByUserIdAndMd5AndParentId(userId, fileMd5,parentId);
         if (selfFile != null) {
             System.out.println("用户已拥有该文件，跳过上传: " + file.getOriginalFilename());
             return selfFile;
@@ -80,6 +105,8 @@ public class FileService {
             userFile.setType(existingFile.getType()); // 复用已有类型
             userFile.setSize(existingFile.getSize()); // 复用已有大小
             userFile.setUploadTime(new Date());
+
+            userFile.setParentId(parentId); //使用最终计算出来的parentId
 
             // 【关键】复用已有文件的物理路径！
             userFile.setFilePath(existingFile.getFilePath());
@@ -286,10 +313,20 @@ public class FileService {
         if(file == null) return;
         if(userId != null && !file.getUserId().equals(userId)) throw new RuntimeException("无权操作");
 
-        //删除物理文件
-        deletePhysicalFile(file.getFilePath(), true);
-        deletePhysicalFile(file.getThumbnailMinPath(), false);
-        deletePhysicalFile(file.getThumbnailPrePath(), false);
+        //新增判断多用户情况下共持有同一文件下的物理删除逻辑
+        String md5 = file.getMD5();
+        Long count = userFileRepository.countByMD5(md5);
+
+        if(count <= 1){
+            System.out.println("删除前此文件还有" + count + "个人持有");
+            //删除物理文件,只有当这是最后一个用户持有该文件的时候才执行删除
+            deletePhysicalFile(file.getFilePath(), true);
+            deletePhysicalFile(file.getThumbnailMinPath(), false);
+            deletePhysicalFile(file.getThumbnailPrePath(), false);
+        }else {
+                System.out.println("该文件还有其他 " + (count - 1) + " 处引用，仅删除数据库记录，保留物理文件。");
+        }
+
 
         //删除数据库
         userFileRepository.delete(file);
