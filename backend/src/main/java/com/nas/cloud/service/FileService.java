@@ -57,7 +57,7 @@ public class FileService {
             String[] parts = relativePath.split("/");
 
             //循环处理每一层目录
-            for(int i = 0 ;i <= parts.length-1; i++){
+            for(int i = 0 ;i < parts.length-1; i++){
                 String pathName = parts[i];
                 if(pathName == null) continue;
                 //检查一下当前的目录里面有没有叫这个名字的文件夹
@@ -69,7 +69,7 @@ public class FileService {
                 }
 
                 //注意更新一下parentId进入下一层之前
-                parentId = folder.getParentId();
+                parentId = folder.getId();
             }
 
         }
@@ -315,7 +315,7 @@ public class FileService {
 
         //新增判断多用户情况下共持有同一文件下的物理删除逻辑
         String md5 = file.getMD5();
-        Long count = userFileRepository.countByMD5(md5);
+        Long count = userFileRepository.countByMd5(md5);
 
         if(count <= 1){
             System.out.println("删除前此文件还有" + count + "个人持有");

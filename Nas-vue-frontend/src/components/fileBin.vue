@@ -30,6 +30,7 @@
     import { getGalleryFileListApi,getFilePreviewApi,getGalleryTimeLineApi,getFileThumbnailApi ,getFileDataListApi, getRecycleToBinList} from '@/api/fileApi';
     import { type UserFile ,type TimeGroup,type NameGroup} from '@/api/fileApi';
     import lightBox from '@/components/customComponents/lightBox.vue';
+    import { getThumbnailAndPre } from '@/utils/getThumbAndPre';
     import { all } from 'axios';
     //----------------------数据部分--------------------
     const currentStyleOfPosition = 'album'
@@ -78,19 +79,6 @@
     }catch(e){
         console.error("加载相册失败",e);
     }
-    }
-    //获取缩略图
-    const getThumbnailAndPre = async (file?:UserFile) =>{
-        if(file == null) return;
-        try{
-            const thumbnailRes = await getFileThumbnailApi(file.id,userId)
-            file.thumbnailUrl = URL.createObjectURL(thumbnailRes.data)//创建临时src，方便组件调用
-            const previewRes = await getFilePreviewApi(file.id,userId)
-            file.previewUrl = URL.createObjectURL(previewRes.data)
-            isLoading.value[file.index] = false
-        }catch(e){
-            console.error(e)
-        }
     }
     //查看预览图片
     const handlePhotos= (file?:UserFile) => {

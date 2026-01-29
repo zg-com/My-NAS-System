@@ -21,7 +21,6 @@ import subSiderba from '@/components/customComponents/subSiderba.vue';
     .layout{
         display: flex;
         height: 100vh;
-        overflow: hidden;
         .subSiderba{
             height: 100vh;
             overflow: hidden;
@@ -32,6 +31,8 @@ import subSiderba from '@/components/customComponents/subSiderba.vue';
             height: 100%;
             overflow-y: auto;
             margin-left: 20px;
+            /* ✅ 【关键】防止 Flex 子元素被内容撑开导致 Grid 无法正确自适应 */
+            min-width: 0;
         }
     }
 </style>

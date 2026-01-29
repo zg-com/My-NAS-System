@@ -17,10 +17,11 @@
         height: 100%;
         font-family: 'Avenir',Arial, Helvetica, sans-serif;
         user-select: none;
+        overflow: hidden;
     }
     *{
         box-sizing: border-box;
-        overflow: hidden;
+
     }
     
     

@@ -1,5 +1,10 @@
 <template>
     <Teleport to="body">
+        <editorWindow 
+                :visible="showCreateFolderWindow" 
+                @close="showCreateFolderWindow = false"
+                @confirm="handleCreateFolderApi"
+            ></editorWindow>
         <div class="addSpace">
             <div class="menu" v-if="showMenu" >
             <li v-for="item in currentOptions" :key="item.label" @click="handleAction(item.action)">
@@ -11,6 +16,12 @@
             style="display: none;" 
             multiple 
             :accept="acceptType" 
+            @change="handleBatchUpload">
+            <!-- 实现文件夹上传 -->
+        <input type="file" 
+            ref="dirInputRef" 
+            style="display: none;" 
+            webkitdirectory
             @change="handleBatchUpload">
             
         <div class="space">
@@ -30,19 +41,30 @@
 import{ ref, computed, nextTick } from 'vue' // ✨ 引入 nextTick
 import request from '@/utils/request';
 import { computeFileMD5 } from '@/utils/md5';
-import { uploadFileApi } from '@/api/fileApi';
-
+import { uploadFileApi ,createFolder} from '@/api/fileApi';
+import editorWindow from './editorWindow.vue';
 //定义接收
 const props = defineProps({
     scene:{
-        type: String,
+        type:String,
         default:'album'
+    },
+    currentFolderId:{
+        type:Number,
+        default:'0'
     }
 })
+//定义回传
+const emit = defineEmits(['needUpdate'])
+//是否开启编辑窗口
+const showCreateFolderWindow = ref(false)
 const showMenu = ref(false);
 const fileInputRef = ref<HTMLInputElement | null >(null);
+const dirInputRef = ref<HTMLInputElement | null> (null);
 // ✨ 新增：定义当前允许上传的文件类型，默认为所有
 const acceptType = ref('*/*'); 
+//获取userId
+
 
 const currentOptions = computed(() => {
     if(props.scene === 'album'){
@@ -55,7 +77,7 @@ const currentOptions = computed(() => {
         return[
             { label: '上传文件', action: 'uploadFile' },
             { label: '上传文件夹', action: 'uploadDir' }, // 文件夹上传需要单独处理 input 的 webkitdirectory 属性，这里暂不展开
-            { label: '新建文件', action: 'createFile' }
+            { label: '新建文件夹', action: 'createFile' }
             ];
     }
 })
@@ -72,55 +94,91 @@ const handleAction = async (actionName:string) => {
         acceptType.value = 'video/*'; // 只看视频
     } else if(actionName === 'uploadFile'){
         acceptType.value = '*/*'; // 所有文件
-    } else {
-        // 其他操作如 createAlbum 等暂不处理文件上传逻辑
-        return;
+    } else if(actionName === 'createAlbum'){
+        return
+    } else if(actionName === 'uploadDir'){
+        await nextTick();
+        dirInputRef.value?.click();
+        return
+    } else if(actionName === 'createFile'){
+        handleCreateFolder();
+        return 
     }
 
     // ✨ 关键：等待 Vue 更新 DOM 中的 accept 属性后，再触发点击
     await nextTick();
     fileInputRef.value?.click();
 }
+const handleCreateFolder = () => {
+    showCreateFolderWindow.value = true;
+}
 
-// 批量上传+md5计算 (保持不变，后端会自动识别 mimeType 判断是视频还是图片)
-const handleBatchUpload = async (event:Event) => {
-    const input = event.target as HTMLInputElement;
-    
-    if(!input.files || input.files.length === 0) return;
 
-    //获取userId
-    const userId = localStorage.getItem('userId')
-    if(!userId){
-        alert("用户名丢失，请重新登录")
-        return;
+// ✅ 新增：处理真正的创建逻辑
+// 这里的 name 就是子组件 emit('confirm', folderName.value) 传过来的
+const handleCreateFolderApi = async (name: string) => {
+    try {
+        const userId = localStorage.getItem('userId')
+        if (!userId) return;
+
+        // 调用你的后端接口
+        // 假设你的 props.currentFolderId 是当前目录ID
+        await createFolder(name, props.currentFolderId, userId);
+        
+        alert('文件夹创建成功');
+        showCreateFolderWindow.value = false; // 关闭弹窗
+        emit('needUpdate'); // 通知父列表刷新
+    } catch (e) {
+        console.error('创建失败', e);
+        alert('创建失败');
     }
+}
+
+
+//上传文件夹逻辑
+const handleDirUpload = async (event:Event) => {
+    const input = event.target as HTMLInputElement
+    if(!input.files || input.files.length === 0) return
+
     const files = Array.from(input.files);
+    await processUpload(files);
+    input.value = ''
+}
 
+// 批量上传+md5计算
+const handleBatchUpload = async (event:Event) => {
+    //获取input获取到的文件列表
+    const input = event.target as HTMLInputElement;  
+    if(!input.files || input.files.length === 0) return;
+    const files = Array.from(input.files);
     //循环处理每一个文件
-    for(const file of files){
-        try{
-            console.log(`正在计算 ${file.name} 的 MD5...`);
-            //计算md5
-            const md5 = await computeFileMD5(file);
-            console.log(`MD5计算完成: ${md5}`);
-
-            //准备上传参数
-            const formData = new FormData();
-            formData.append('file',file);
-            formData.append('userId',userId);
-            formData.append('parentId','0');
-            formData.append('md5',md5);
-            
-            // 发送请求
-            const res = await uploadFileApi(formData)
-            console.log(`文件 ${file.name} 上传成功:`, res.data);
-        }catch(error){
-            console.error(`文件 ${file.name} 上传失败`, error);
-            alert(`文件 ${file.name} 上传出错`);
-        }
-    }
+    await processUpload(files);
     alert('所有文件处理完毕！');
     input.value = ''; // 清空选择框
+}
+
+//统一上传处理函数
+const processUpload = async (files:File[]) => {
+    const userId = localStorage.getItem('userId')
+    if(!userId) return
+    
+    for(const file of files){
+        try{
+            const md5 = await computeFileMD5(file);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
+            formData.append('parentId', String(props.currentFolderId));
+            formData.append('md5', md5);
+            formData.append('relativePath', (file as any).webkitRelativePath || '');
+            await uploadFileApi(formData);
+            console.log(`上传成功: ${file.name}`);
+        } catch (error) {
+            console.error(`上传失败: ${file.name}`);
+        }
+    }
+    alert('处理完毕');
+    emit('needUpdate'); // 刷新列表
 }
 </script>
 <style scoped>

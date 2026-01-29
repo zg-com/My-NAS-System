@@ -41,7 +41,8 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
             "FROM nas_file " +
             "WHERE user_id = :userId " +
             "AND is_deleted = 0 " +
-            // 注意：这里删除了 AND shoot_time IS NOT NULL，因为我们要包含只有上传时间的图片
+            "AND is_folder = 0 " +
+            "AND (is_image = 1 OR is_video = 1 OR is_raw_img = 1 OR is_live_img = 1) " +
             "GROUP BY YEAR(IFNULL(shoot_time, upload_time)), MONTH(IFNULL(shoot_time, upload_time)) " +
             "ORDER BY year DESC, month DESC",
             nativeQuery = true)
@@ -58,8 +59,12 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
      */
     @Query("SELECT f FROM UserFile f " +
             "WHERE f.userId = :userId " +
-            "AND f.isFolder = false " +
-            "AND f.isDeleted = false " +
+            "AND f.isFolder = false " +       // 排除文件夹
+            "AND f.isDeleted = false " +      // 排除回收站文件
+            "AND (f.isImage = true " +
+            "  OR f.isVideo = true " +
+            "  OR f.isRawImg = true " +
+            "  OR f.isLiveImg = true) " +
             "ORDER BY COALESCE(f.shootTime, f.uploadTime) DESC, f.id DESC")
     List<UserFile> findGalleryList(@Param("userId") Long userId);
 
@@ -72,5 +77,5 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     UserFile findByUserIdAndMd5AndParentId(Long userId,String md5,Long parentId);
 
     //查一下相同的这个md5被用了多少次，为同一物理文件映射多前端逻辑文件做铺垫，避免彻底删除，直接把多人拥有的这个文件一起删了
-    long countByMD5(String md5);
+    long  countByMd5(String md5);
 }

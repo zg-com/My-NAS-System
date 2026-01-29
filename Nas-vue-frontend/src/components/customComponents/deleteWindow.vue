@@ -24,7 +24,7 @@
     //定义可以接受的数据
     const props = defineProps<{
         showWindow:boolean
-        file?:UserFile
+        file?:UserFile | UserFile[]
     }>()
     //定义发送的数据
     const emit = defineEmits(['close','deleteSuccess'])
@@ -34,9 +34,12 @@
     const userId = localStorage.getItem('userId')
     //移至回收站
     const removeToBin= async() => {
+        if(!props.file) return
+        //是数组的话就保持不变，不是数组的话是单个文件就转化为数组
+        const fileToprocess = Array.isArray(props.file)?props.file:[props.file] 
         try{
-            if(!props.file) return
-            const res = await deleteFileApi(props.file.id,userId)
+            const deletePromises = fileToprocess.map(item => deleteFileApi(item.id,userId))
+            await Promise.all(deletePromises)
             alert('删除成功!')
             emit('close')
             emit('deleteSuccess')
@@ -46,9 +49,12 @@
     }
     //彻底删除
     const removePhysically = async() => {
+        if(!props.file) return
+        //是数组的话就保持不变，不是数组的话是单个文件就转化为数组
+        const fileToprocess = Array.isArray(props.file)?props.file:[props.file] 
         try{
-            if(!props.file) return
-            const res = await deletePhysicalFileApi(props.file.id,userId)
+            const deletePromises = fileToprocess.map(item => deletePhysicalFileApi(item.id,userId))
+            await Promise.all(deletePromises)
             alert('彻底删除成功!')
             emit('close')
             emit('deleteSuccess')
