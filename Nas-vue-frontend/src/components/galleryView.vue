@@ -47,7 +47,9 @@
     <lightBox :visible="showLightBox"
               :file="currentPreviewFile"
               @close="closeLightBox"
-              @needUpdate="updateList"></lightBox>
+              @needUpdate="updateList"
+              @NextItem="showNext"
+              @PreItem="showPre"></lightBox>
 </template>
 
 <script setup lang="ts">
@@ -230,6 +232,22 @@
         IsChoose.value = false
         havechosePhotosList.value = []
         updateList()
+    }
+
+    //上一张下一张
+    const showNext = () => {
+        const currentPreviewIndex = allPhotos.value.findIndex(item => item.id === currentPreviewFile.value?.id)
+
+        if(currentPreviewIndex < allPhotos.value.length){
+            currentPreviewFile.value = allPhotos.value[currentPreviewIndex + 1 ]
+        }
+    }
+    const showPre = () => {
+        const currentPreviewIndex = allPhotos.value.findIndex(item => item.id === currentPreviewFile.value?.id)
+
+        if(currentPreviewIndex > 0){
+            currentPreviewFile.value = allPhotos.value[currentPreviewIndex - 1]
+        }
     }
 </script>
 

@@ -1,9 +1,10 @@
 import router from "@/router";
 import axios from "axios";
-
+// axios.defaults.baseURL = '/api';
 const request = axios.create({
     baseURL:'http://100.87.189.97:8080',
     // baseURL:'http://localhost:8080',
+    // baseURL: '/api',
     timeout:60000
 })
 

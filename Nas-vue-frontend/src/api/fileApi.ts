@@ -1,6 +1,5 @@
 import request from "@/utils/request";
 
-export const BASE_URL = 'http://100.87.189.97:8080';
 //定义文件类型
 export interface UserFile{
     id:number 
