@@ -24,6 +24,7 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     //新增插某个文件夹下的所有图片
     //---------给资源管理器用---------------------------
     List<UserFile> findByUserIdAndParentId(Long userId, Long parentId, Sort sort);
+    List<UserFile> findByUserIdAndParentId(Long userId, Long parentId);
     //---------给图库用-----------------------------------
     List<UserFile> findByUserIdAndIsFolderFalseAndIsDeletedFalse(Long userId , Sort sort);
 

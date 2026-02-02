@@ -11,6 +11,7 @@ import com.nas.cloud.repository.UserFileRepository;
 import com.nas.cloud.util.ImageUtils;
 import com.nas.cloud.util.VideoUtils;
 import jakarta.security.auth.message.callback.PrivateKeyCallback;
+import org.springframework.transaction.annotation.Transactional;
 import jdk.jfr.ContentType;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -51,6 +52,17 @@ public class FileService {
 
     //定义上传文件的方法，不要忘了可能发生错误，发生错误要丢给IOException处理
     public UserFile upload(@NotNull MultipartFile file, Long userId, String md5FromClient, Long parentId,String relativePath) throws IOException {
+        // 获取原始文件名（去掉相对路径，保留原始文件名）
+        String originalFilename = file.getOriginalFilename();
+        // 如果文件名包含路径分隔符（/ 或 \），只取最后一部分
+        if (originalFilename != null) {
+            int lastUnixPos = originalFilename.lastIndexOf('/');
+            int lastWindowsPos = originalFilename.lastIndexOf('\\');
+            int index = Math.max(lastUnixPos, lastWindowsPos);
+            if (index != -1) {
+                originalFilename = originalFilename.substring(index + 1);
+            }
+        }
 
         //解析相对路径，按照传入的文件夹存储,".."是为了防止访问到上层不该访问的位置
         if(relativePath != null && !relativePath.contains("..")){
@@ -73,6 +85,7 @@ public class FileService {
             }
 
         }
+
         //MultipartFile是Spring专门用来封装上传文件的对象的,里面包含了文件的所有数据
         String fileMd5;
         if (md5FromClient != null && !md5FromClient.isEmpty()) {
@@ -101,7 +114,7 @@ public class FileService {
             //只创建新的数据库记录，不存物理文件
             UserFile userFile = new UserFile();
             userFile.setUserId(userId); // 当前用户
-            userFile.setFilename(file.getOriginalFilename()); // 用当前上传的文件名
+            userFile.setFilename(originalFilename); // 用当前上传的文件名
             userFile.setType(existingFile.getType()); // 复用已有类型
             userFile.setSize(existingFile.getSize()); // 复用已有大小
             userFile.setUploadTime(new Date());
@@ -158,9 +171,13 @@ public class FileService {
         if (!originalDir.exists()) originalDir.mkdirs();
 
 
+
         //生成文件名,使用UUID 防止重名
-        String originalFilename = file.getOriginalFilename();
-        String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        //String originalFilename = file.getOriginalFilename();
+        String suffix = "";
+        if(originalFilename.lastIndexOf(".") >= 0){
+            suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
         String newFileName = UUID.randomUUID().toString() + suffix;
         //设定三个文件的目标路径
         File physicalFile = new File(originalDir, newFileName);//原图
@@ -308,26 +325,40 @@ public class FileService {
         userFileRepository.save(file);
     }
     //---------彻底删除（物理删除）--------------------
+    @Transactional(rollbackFor = Exception.class)//加上事务注解，如果中间出错会回滚，会恢复删掉的数据库，防止那种突然断电之类的但是还没删除完的情况
     public void deleteFilePhysically(Long fileId,Long userId){
         UserFile file = userFileRepository.findById(fileId).orElse(null);
         if(file == null) return;
         if(userId != null && !file.getUserId().equals(userId)) throw new RuntimeException("无权操作");
 
-        //新增判断多用户情况下共持有同一文件下的物理删除逻辑
-        String md5 = file.getMD5();
-        Long count = userFileRepository.countByMd5(md5);
+        if (Boolean.TRUE.equals(file.getIsFolder())) {
+            // 1. 找出所有子文件/子文件夹
+            List<UserFile> children = userFileRepository.findByUserIdAndParentId(userId, fileId);
 
-        if(count <= 1){
-            System.out.println("删除前此文件还有" + count + "个人持有");
-            //删除物理文件,只有当这是最后一个用户持有该文件的时候才执行删除
-            deletePhysicalFile(file.getFilePath(), true);
-            deletePhysicalFile(file.getThumbnailMinPath(), false);
-            deletePhysicalFile(file.getThumbnailPrePath(), false);
-        }else {
-                System.out.println("该文件还有其他 " + (count - 1) + " 处引用，仅删除数据库记录，保留物理文件。");
+            // 2. 遍历每一个子文件，递归调用本方法
+            for (UserFile child : children) {
+                // 递归调用：自己调自己
+                deleteFilePhysically(child.getId(), userId);
+            }
+            // 当循环结束时，说明下面的子孙后代都已经删干净了，现在可以安心删除自己这个空壳文件夹了
         }
 
+        if(!Boolean.TRUE.equals(file.getIsFolder())) {
+            //新增判断多用户情况下共持有同一文件下的物理删除逻辑
+            String md5 = file.getMD5();
+            Long count = userFileRepository.countByMd5(md5);
 
+            if (count <= 1) {
+                System.out.println("删除前此文件还有" + count + "个人持有");
+                //删除物理文件,只有当这是最后一个用户持有该文件的时候才执行删除
+                deletePhysicalFile(file.getFilePath(), true);
+                deletePhysicalFile(file.getThumbnailMinPath(), false);
+                deletePhysicalFile(file.getThumbnailPrePath(), false);
+            } else {
+                System.out.println("该文件还有其他 " + (count - 1) + " 处引用，仅删除数据库记录，保留物理文件。");
+            }
+
+        }
         //删除数据库
         userFileRepository.delete(file);
     }

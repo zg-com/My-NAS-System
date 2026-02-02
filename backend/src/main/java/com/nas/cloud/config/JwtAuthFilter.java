@@ -43,6 +43,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if(authHeader != null && authHeader.startsWith("Bearer ")){
             //截取掉“Bearer ”一共7个字符，剩下的就是Token
             token = authHeader.substring(7);
+            // 【新增逻辑】如果 Header 里没有，尝试从 URL 参数取 (针对视频播放)
+            // ✨ 必须确认有这段代码
+            if (authHeader == null && request.getParameter("token") != null) {
+                authHeader = "Bearer " + request.getParameter("token");
+            }
 
             try{
                 //提取用户名，如果过期了，或者是伪造的也会报错
