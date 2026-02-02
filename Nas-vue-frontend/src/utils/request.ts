@@ -1,11 +1,14 @@
 import router from "@/router";
 import axios from "axios";
-// axios.defaults.baseURL = '/api';
+
+export const BASE_URL = 'http://192.168.3.132:8080'
+// axios.defaults.baseURL = '/api'
 const request = axios.create({
-    baseURL:'http://100.87.189.97:8080',
+    // baseURL:'http://100.87.189.97:8080',
     // baseURL:'http://localhost:8080',
     // baseURL: '/api',
-    timeout:60000
+    baseURL:'http://192.168.3.132:8080/api',
+    timeout:30000
 })
 
 //请求拦截器，每次请求带上token

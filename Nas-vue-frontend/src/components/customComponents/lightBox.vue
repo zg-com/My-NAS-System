@@ -15,7 +15,7 @@
                 <div class="close" @click="closeLightBox">x</div>
                 <div class="rightUtils">
                     <div class="showOrigin">
-                        <button @click="showOrigin">查看原图</button>
+                        <button @click="showOrigin" v-if="!file?.isRawImg">查看原图</button>
                     </div>
                     <div class="downloadOrigin">
                         <button @click="downloadOrigin">下载原图</button>
@@ -24,40 +24,91 @@
                         <button @click="deleteToBin">删除</button>
                     </div>
                     <div class="showMoreDetails">
-                        <button @click="showMoreDetails">更多信息</button>
+                        <button @click="toggleMoreData" :class="{ active: showMoreDataWindow }">
+                            ⓘ 详细信息
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="previewSpace">
-                <div class="preButtonSpace">
-                    <button @click="toPre"><</button>
+            <div class="previewSpace" 
+                :class="{ 'shift-left': showMoreDataWindow }"
+                @click.self="closeMoreDataWindow">
+                
+                <div class="preButtonSpace" v-if="!currentFile?.isVideo">
+                    <button @click.stop="toPre"><</button>
                 </div>
-                <img ref="imgRef" :style="imgStyle" :src="currentFile?.originalUrl?currentFile?.originalUrl:file?.previewUrl" alt="" draggable="false" @dragstart.prevent >
-                <div class="nextButtonSpace">
-                    <button @click="toNext">></button>
+                
+                <div v-if="currentFile?.isVideo" class="video-container" @click.stop>
+                    <VideoPlayer 
+                        :url="videoUrl" 
+                        :poster="currentFile?.previewUrl" 
+                    />
+                </div>
+
+                <img v-else
+                    ref="imgRef" 
+                    :style="imgStyle" 
+                    :src="currentFile?.originalUrl || file?.previewUrl" 
+                    alt="" 
+                    draggable="false" 
+                    @dragstart.prevent >
+                    
+                <div class="nextButtonSpace" v-if="!currentFile?.isVideo">
+                    <button @click.stop="toNext">></button>
                 </div>
             </div>
-            <div class="changeViewUtils"></div>
+            <showMoreData 
+                :visible="showMoreDataWindow"
+                :file="currentFile || file"
+                @close="closeMoreDataWindow">
+             </showMoreData>
+            
         </div>
     </Teleport>
     <deleteWindow :show-window="showDeleteWindow" 
                   :file = "file"
+                  :position="position"
                   @close="closeDeleteWindow"
                   @deleteSuccess="deleteSuccess"
                   ></deleteWindow>
+    
 </template>
 
 <script setup lang="ts">
     import { downloadFile, getOriginalFileApi, 
-    type UserFile} from '@/api/fileApi';
+    type UserFile,getVideo} from '@/api/fileApi';
     import { ref ,watch,computed,onMounted,onUnmounted} from 'vue';
     import deleteWindow from '@/components/customComponents/deleteWindow.vue';
     import { transform } from 'typescript';
-
+    import showMoreData from './showMoreData.vue';
+    import VideoPlayer from './videoPlayer.vue';
+    import { BASE_URL } from '@/utils/request';
+    
+    //获取视频流完整url
+    const videoUrl = computed(() => {
+        if (!currentFile.value || !currentFile.value.id) return '';
+        const baseUrl = '/api/file/video/';
+        const fileId = currentFile.value.id;
+        const userId = currentFile.value.userId;
+        const token = localStorage.getItem('token');
+        return `${BASE_URL}${baseUrl}${fileId}?userId=${userId}&token=${token}`;
+    })
+    const toggleMoreData = () => {
+    showMoreDataWindow.value = !showMoreDataWindow.value;
+    // 打开侧边栏时，最好重置一下图片的缩放，体验更好
+    if(showMoreDataWindow.value) {
+        resetImage(); 
+    }
+    };
+    const closeMoreDataWindow = () => {
+    showMoreDataWindow.value = false;
+    };
+    const showMoreDataWindow = ref(false)
     //定义这个组件可以接收的数据
     const props = defineProps<{
         visible:Boolean
         file?:UserFile
+        position?:string
     }>()
     //定义发送的数据
     const emit = defineEmits(['close','needUpdate','NextItem','PreItem'])
@@ -91,6 +142,7 @@
 
     //键盘事件
     const handleKeydown = (e:KeyboardEvent) => {
+        if (currentFile.value?.isVideo) return;
         if(!props.visible) return
         if(e.key === 'ArrowLeft') toPre()
         if(e.key === 'ArrowRight') toNext()
@@ -98,6 +150,7 @@
     }
     //滚轮缩放逻辑
     const handleWheel = (e:WheelEvent)=>{
+        if (currentFile.value?.isVideo) return;
         e.preventDefault();//阻止默认滚动行为
         let newScale = scale.value
         const zoomSensitivty = 0.2
@@ -124,6 +177,7 @@
     }
     //拖拽图片逻辑
     const startDrag = (e:MouseEvent) =>{
+        if (currentFile.value?.isVideo) return;
         if(scale.value <= 1) return
         isDragging.value = true
         startX.value = e.clientX - translateX.value
@@ -145,19 +199,23 @@
     let touchStartTime = 0
 
     const handleTouchStart = (e:TouchEvent) => {
+        if (currentFile.value?.isVideo) return;
+        e.preventDefault()
         if(e.touches.length === 1 && e.touches[0]){
             touchStartX = e.touches[0].clientX
             touchStartTime = Date.now()
         }
     }
     const handleTouchEnd = (e:TouchEvent) => {
+        if (currentFile.value?.isVideo) return;
+        e.preventDefault()
         if(scale.value > 1 ) return 
         if(e.changedTouches[0]){
         const touchEndX = e.changedTouches[0]?.clientX 
                 const diffX = touchEndX - touchStartX //滑动距离
                 const timeCost = Date.now() - touchStartTime //滑动时间
 
-                if(timeCost < 500 && Math.abs(diffX) > 50){
+                if(timeCost < 500 && Math.abs(diffX) > 100){
                     if(diffX > 0){
                         toPre()
                     }else{
@@ -275,7 +333,7 @@
     }
     //更多信息
     const showMoreDetails = ()=>{
-        
+        showMoreDataWindow.value = true
     }
     //删除成功关闭窗口
     const deleteSuccess = () => {
@@ -401,7 +459,27 @@
     justify-content: center; // 水平居中
     align-items: center;     // 垂直居中
     overflow: hidden; // 这一点很重要：防止图片放大后撑出屏幕出现滚动条
-
+    transition: padding-right 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    &.shift-left {
+        padding-right: 360px; // 让出侧边栏的宽度
+    }
+    //视频样式
+    .video-container {
+        width: 80%;  // 视频默认不全屏，留一点黑边好看
+        height: 80%;
+        z-index: 5; // 确保在背景之上
+        
+        // 移动端适配
+        @media (max-width: 768px) {
+            width: 100%;
+            height: 100%; // 移动端占满
+        }
+    }
+    // 选中状态的按钮样式
+    .showMoreDetails button.active {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    }
     /* --- 图片本体 (Z-index: 1) --- */
     img {
       // 初始状态适应屏幕，不超过屏幕
