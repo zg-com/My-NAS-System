@@ -34,11 +34,17 @@ public class FileController {
             @RequestParam("userId") Long userId,
             @RequestParam(value = "md5", required = false) String md5,
             @RequestParam(value = "parentId", defaultValue = "0") Long parentId,
-            @RequestParam(value = "relativePath", required = false) String relativePath) {
+            @RequestParam(value = "relativePath", required = false) String relativePath,
+            @RequestParam(value = "source", required = false) String source ) {
 
 
         //要注意异常处理,因为文件的上传有可能失败,也要给出上传成功与失败的提示
         try {
+            // 如果来源是相册，强制修改 parentId，无视前端传来的 parentId
+            if ("gallery".equals(source)) {
+                // 获取专属的日期归档目录 ID
+                parentId = fileService.getOrCreateGalleryFolder(userId);
+            }
             //让服务层干活
             UserFile savedFile = fileService.upload(file, userId, md5, parentId, relativePath);
             //返回成功信息

@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -508,4 +509,36 @@ public class FileService {
         return userFileRepository.findByUserIdAndIsDeletedTrueOrderByDeleteTimeDesc(userId);
     }
 
+    //专门用来给图库上传的照片与文件管理隔离的
+    public Long getOrCreateGalleryFolder(Long userId) {
+        // 1. 定义相册的根目录名字 (你也可以叫 "Camera Uploads")
+        String galleryRootName = "云相册";
+
+        // 2. 检查根目录下有没有“云相册”
+        UserFile rootAlbum = userFileRepository.findByUserIdAndParentIdAndFilenameAndIsFolderTrue(userId, 0L, galleryRootName);
+        if (rootAlbum == null) {
+            // 没有就创建
+            rootAlbum = createFolder(galleryRootName, 0L, userId);
+        }
+
+        // 3. 获取当前年份和月份，例如 "2026" 和 "02"
+        Calendar cal = Calendar.getInstance();
+        String year = String.valueOf(cal.get(Calendar.YEAR));
+        String month = String.format("%02d", cal.get(Calendar.MONTH) + 1); // 月份从0开始，要+1
+
+        // 4. 检查“云相册”下有没有“年份”文件夹 (云相册 -> 2026)
+        UserFile yearFolder = userFileRepository.findByUserIdAndParentIdAndFilenameAndIsFolderTrue(userId, rootAlbum.getId(), year);
+        if (yearFolder == null) {
+            yearFolder = createFolder(year, rootAlbum.getId(), userId);
+        }
+
+        // 5. 检查“年份”下有没有“月份”文件夹 (云相册 -> 2026 -> 02)
+        UserFile monthFolder = userFileRepository.findByUserIdAndParentIdAndFilenameAndIsFolderTrue(userId, yearFolder.getId(), month);
+        if (monthFolder == null) {
+            monthFolder = createFolder(month, yearFolder.getId(), userId);
+        }
+
+        // 6. 返回最终月份文件夹的 ID，照片就存在这里！
+        return monthFolder.getId();
+    }
 }
