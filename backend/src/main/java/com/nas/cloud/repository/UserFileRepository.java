@@ -38,14 +38,18 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     @Query(value = "SELECT " +
             "YEAR(IFNULL(shoot_time, upload_time)) AS year, " +
             "MONTH(IFNULL(shoot_time, upload_time)) AS month, " +
+            "DAY(IFNULL(shoot_time, upload_time)) AS day, " + //  新增日字段
             "COUNT(*) AS count " +
             "FROM nas_file " +
             "WHERE user_id = :userId " +
             "AND is_deleted = 0 " +
             "AND is_folder = 0 " +
             "AND (is_image = 1 OR is_video = 1 OR is_raw_img = 1 OR is_live_img = 1) " +
-            "GROUP BY YEAR(IFNULL(shoot_time, upload_time)), MONTH(IFNULL(shoot_time, upload_time)) " +
-            "ORDER BY year DESC, month DESC",
+            "GROUP BY " +
+            "  YEAR(IFNULL(shoot_time, upload_time)), " +
+            "  MONTH(IFNULL(shoot_time, upload_time)), " +
+            "  DAY(IFNULL(shoot_time, upload_time)) " + //  分组逻辑必须包含日
+            "ORDER BY year DESC, month DESC, day DESC", //  排序逻辑增加日降序
             nativeQuery = true)
     List<TimelineSummary> findTimelineSummary(@Param("userId") Long userId);
 
