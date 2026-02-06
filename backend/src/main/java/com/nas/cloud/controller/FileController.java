@@ -17,7 +17,9 @@ import org.w3c.dom.ranges.Range;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController//告诉Spring我是负责Web接口的
 @CrossOrigin(origins = "*") //允许任何前端访问我
@@ -29,7 +31,7 @@ public class FileController {
 
     //定义接口以及路径以及方法
     @PostMapping("/upload")//这个RequestParam中的这个file就是与前端中的那个组件的那个名字一样,不一样就收不到文件
-    public String uploadFile(
+    public Map<String, Object> uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("userId") Long userId,
             @RequestParam(value = "md5", required = false) String md5,
@@ -37,6 +39,8 @@ public class FileController {
             @RequestParam(value = "relativePath", required = false) String relativePath,
             @RequestParam(value = "source", required = false) String source ) {
 
+        // 定义返回结果容器
+        Map<String, Object> result = new HashMap<>();
 
         //要注意异常处理,因为文件的上传有可能失败,也要给出上传成功与失败的提示
         try {
@@ -48,10 +52,14 @@ public class FileController {
             //让服务层干活
             UserFile savedFile = fileService.upload(file, userId, md5, parentId, relativePath);
             //返回成功信息
-            return "上传成功:" + savedFile.getId();
+            result.put("code", 200);
+            result.put("message", "上传成功");
+            result.put("fileId", savedFile.getId());
         } catch (IOException e) {//捕捉错误
-            return "上传错误:" + e.getMessage();
+            result.put("code", 500);
+            result.put("message", "上传错误: " + e.getMessage());
         }
+        return result;
     }
 
     //根据id获取文件
